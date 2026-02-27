@@ -1,0 +1,49 @@
+package br.com.foresight.modules.relatorio.controller;
+
+import br.com.foresight.core.web.ApiResponse;
+import br.com.foresight.modules.relatorio.dto.TransacaoRelatorioDto;
+import br.com.foresight.modules.relatorio.service.RelatorioAvancadoService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+
+@RestController
+@RequestMapping("/api/relatorios/avancado")
+@RequiredArgsConstructor
+public class RelatorioAvancadoController {
+
+    private final RelatorioAvancadoService service;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<TransacaoRelatorioDto>>> buscar(
+            @RequestParam(required = false) String termo,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
+            @RequestParam(required = false) String tipo,
+            @RequestParam(required = false) String categoria,
+            Pageable pageable) { // Pageable injeta ?page=0&size=10&sort=dataHora,desc
+
+        return ResponseEntity.ok(ApiResponse.success(
+                service.buscarDados(termo, dataInicio, dataFim, tipo, categoria, pageable)
+        ));
+    }
+
+    @GetMapping(value = "/export/pdf", produces = "application/pdf")
+    public ResponseEntity<byte[]> exportarPdf(
+            @RequestParam(required = false) String termo,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
+            @RequestParam(required = false) String tipo,
+            @RequestParam(required = false) String categoria) {
+
+        byte[] pdf = service.exportarParaPdf(termo, dataInicio, dataFim, tipo, categoria);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=relatorio.pdf")
+                .body(pdf);
+    }
+}

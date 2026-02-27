@@ -1,0 +1,37 @@
+.tracking-tight { letter-spacing: -0.03em; }
+.tracking-wider { letter-spacing: 0.05em; font-size: 0.7rem; }
+
+.cursor-pointer {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+  &:hover { background-color: #f1f5f9; }
+}
+
+.border-transparent { border-color: transparent !important; }
+
+.nav-tabs {
+  .nav-link {
+    transition: all 0.2s;
+    &:hover { border-bottom-color: #cbd5e1 !important; }
+    &.active-tab {
+      color: #0f172a !important;
+      border-bottom-color: #0f172a !important;
+    }
+  }
+}
+
+.form-control, .form-select {
+  &:focus {
+    background-color: #ffffff !important;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1) !important;
+    border-color: #10B981 !important;
+  }
+}
+
+.page-link {
+  background-color: #f8fafc;
+  &:hover:not(:disabled) {
+    background-color: #e2e8f0;
+  }
+}

@@ -1,0 +1,43 @@
+// Cores do Menu (Dark Theme Minimalist)
+$sidebar-bg: #111827; // Quase preto (combinando com o tom do Dashboard)
+$sidebar-hover: rgba(255, 255, 255, 0.05);
+$active-item: #1F2937; // Um tom mais claro que o fundo
+$active-text: #FFFFFF;
+$active-icon: #10B981; // Verde vibrante apenas no ícone
+
+.sidebar-container {
+  width: 260px;
+  background-color: $sidebar-bg;
+  border-right: 1px solid #1F2937;
+
+  .nav-link {
+    color: #9CA3AF; // Cinza claro
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: $sidebar-hover;
+      color: #F9FAFB;
+    }
+
+    &.active-link {
+      background-color: $active-item !important; // Fundo sutil
+      color: $active-text !important;
+
+      i {
+        color: $active-icon; // O destaque vai no ícone
+      }
+    }
+
+    i {
+      font-size: 1.1rem;
+      width: 24px;
+      text-align: center;
+      transition: color 0.2s;
+    }
+  }
+}

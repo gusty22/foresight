@@ -1,0 +1,119 @@
+<div class="auth-wrapper">
+
+  <div class="auth-brand d-none d-lg-flex">
+    <div class="brand-pattern"></div>
+    <div class="brand-content">
+      <div class="logo">
+        <i class="bi bi-layers-fill"></i> Foresight
+      </div>
+      <div class="hero-text">
+        <h1 class="display-5 fw-bolder text-white mb-4 tracking-tight">O primeiro passo para o controle total.</h1>
+        <p class="fs-5 text-white-50">Crie sua estrutura empresarial e comece a operar em menos de 1 minuto.</p>
+      </div>
+      <div class="footer-text text-white-50 small fw-medium">
+        &copy; 2026 Foresight Technology. Ambiente Seguro <i class="bi bi-shield-check ms-1 text-success"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-form-section custom-scrollbar">
+    <div class="form-wrapper py-5">
+
+      <div class="logo-mobile d-lg-none mb-4 text-center">
+        <i class="bi bi-layers-fill fs-1 text-dark"></i>
+      </div>
+
+      <div class="mb-5 text-center text-lg-start">
+        <h2 class="fw-bolder text-dark tracking-tight mb-2">Crie sua conta</h2>
+        <p class="text-muted small fw-medium">Configure seu perfil de gestor e os dados da empresa.</p>
+      </div>
+
+      <div *ngIf="errorMessage()" class="custom-alert mb-4">
+        <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
+        <span>{{ errorMessage() }}</span>
+      </div>
+
+      <form [formGroup]="cadastroForm" (ngSubmit)="realizarCadastro()">
+
+        <div class="section-header">
+          <span class="step-badge">1</span>
+          <h6>Dados de Acesso</h6>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Nome Completo do Responsável</label>
+          <input type="text" formControlName="nomeUsuario" class="form-control premium-input" placeholder="Seu nome"
+                 [ngClass]="{'is-invalid': f['nomeUsuario'].invalid && f['nomeUsuario'].touched}">
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label">E-mail Profissional</label>
+            <input type="email" formControlName="email" class="form-control premium-input" placeholder="seu@email.com"
+                   [ngClass]="{'is-invalid': f['email'].invalid && f['email'].touched}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">WhatsApp</label>
+            <input type="text" formControlName="telefoneUsuario" class="form-control premium-input" placeholder="(11) 90000-0000"
+                   (input)="aplicarMascaraTelefone($event)"
+                   [ngClass]="{'is-invalid': f['telefoneUsuario'].invalid && f['telefoneUsuario'].touched}">
+          </div>
+        </div>
+
+        <div class="row g-3 mb-5">
+          <div class="col-md-6">
+            <label class="form-label">Criar Senha</label>
+            <input type="password" formControlName="senha" class="form-control premium-input" placeholder="Mínimo 6 caracteres"
+                   [ngClass]="{'is-invalid': f['senha'].invalid && f['senha'].touched}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Confirmar Senha</label>
+            <input type="password" formControlName="confirmarSenha" class="form-control premium-input" placeholder="Repita a senha"
+                   [ngClass]="{'is-invalid': (f['confirmarSenha'].invalid || cadastroForm.hasError('senhasDiferentes')) && f['confirmarSenha'].touched}">
+          </div>
+        </div>
+
+        <div class="section-header">
+          <span class="step-badge success">2</span>
+          <h6>Dados da Empresa</h6>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Razão Social ou Nome Fantasia</label>
+          <input type="text" formControlName="nomeEmpresa" class="form-control premium-input" placeholder="Sua empresa"
+                 [ngClass]="{'is-invalid': f['nomeEmpresa'].invalid && f['nomeEmpresa'].touched}">
+        </div>
+
+        <div class="row g-3 mb-5">
+          <div class="col-md-6">
+            <label class="form-label">CNPJ</label>
+            <input type="text" formControlName="cnpjEmpresa" class="form-control premium-input" placeholder="00.000.000/0001-00"
+                   (input)="aplicarMascaraCNPJ($event)"
+                   [ngClass]="{'is-invalid': f['cnpjEmpresa'].invalid && f['cnpjEmpresa'].touched}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Modelo de Negócio</label>
+            <select formControlName="tipoEmpresa" class="form-select premium-input">
+              <option value="SERVICO">Prestação de Serviços</option>
+              <option value="PRODUTO">Venda de Produtos</option>
+              <option value="SERVICO_PRODUTO">Misto</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-premium w-100 py-3" [disabled]="loading() || cadastroForm.invalid">
+          <span *ngIf="loading()" class="spinner-border spinner-border-sm me-2" role="status"></span>
+          {{ loading() ? 'Provisionando ambiente...' : 'Finalizar e Acessar' }}
+        </button>
+
+      </form>
+
+      <div class="text-center mt-5 pt-3 border-top border-light">
+        <p class="text-muted small fw-medium mb-0">
+          Já tem uma conta? <a routerLink="/login" class="signup-link ms-1">Fazer login</a>
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,111 @@
+<div class="container-fluid p-4">
+
+  <div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+      <h3 class="fw-bold text-dark m-0 tracking-tight">Gestão de Despesas</h3>
+      <p class="text-muted small mb-0">Registre e acompanhe as saídas financeiras da sua empresa.</p>
+    </div>
+  </div>
+
+  <div *ngIf="erro()" class="alert alert-danger d-flex align-items-center mb-4 border-0 shadow-sm">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ erro() }}
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm rounded-4 bg-white p-4">
+        <h6 class="fw-bold mb-4 text-dark">Novo Registro</h6>
+
+        <form [formGroup]="despesaForm" (ngSubmit)="lancarDespesa()">
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-muted">Descrição</label>
+            <input type="text" formControlName="descricao" class="form-control bg-light border-0" placeholder="Ex: Aluguel, Internet..."
+                   [ngClass]="{'is-invalid': f['descricao'].invalid && f['descricao'].touched}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-muted">Valor (R$)</label>
+            <div class="input-group border-0 bg-light rounded-2 overflow-hidden" [ngClass]="{'border border-danger': f['valor'].invalid && f['valor'].touched}">
+              <span class="input-group-text bg-transparent border-0 text-muted">R$</span>
+              <input type="number" formControlName="valor" class="form-control bg-transparent border-0 ps-0">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-muted">Data do Pagamento</label>
+            <input type="date" formControlName="data" class="form-control bg-light border-0"
+                   [ngClass]="{'is-invalid': f['data'].invalid && f['data'].touched}">
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label small fw-bold text-muted">Tipo de Gasto</label>
+            <select formControlName="tipo" class="form-select bg-light border-0">
+              <option value="FIXA">Despesa Fixa (Recorrente)</option>
+              <option value="VARIAVEL">Despesa Variável (Avulsa)</option>
+            </select>
+          </div>
+
+          <div class="form-check form-switch mb-4 bg-light p-3 rounded-3 d-flex align-items-center gap-2">
+            <input class="form-check-input m-0 cursor-pointer" type="checkbox" role="switch" formControlName="ehPessoal" id="pessoalSwitch">
+            <label class="form-check-label small fw-bold text-muted m-0 cursor-pointer" for="pessoalSwitch">Marcar como Gasto Pessoal</label>
+          </div>
+
+          <button type="submit" class="btn btn-dark w-100 fw-bold py-3 shadow-sm" [disabled]="despesaForm.invalid || salvando()">
+            <span *ngIf="salvando()" class="spinner-border spinner-border-sm me-2"></span>
+            {{ salvando() ? 'Registrando...' : 'Confirmar Lançamento' }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden h-100 position-relative">
+
+        <div *ngIf="loading()" class="position-absolute w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-75 z-index-10">
+          <div class="spinner-border text-success" role="status"></div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-muted small text-uppercase">
+            <tr>
+              <th class="py-3 ps-4 border-bottom-0">Data</th>
+              <th class="py-3 border-bottom-0">Descrição</th>
+              <th class="py-3 border-bottom-0">Classificação</th>
+              <th class="py-3 text-end border-bottom-0 pe-4">Valor</th>
+              <th class="py-3 border-bottom-0" style="width: 50px;"></th>
+            </tr>
+            </thead>
+            <tbody class="small border-top-0">
+            <tr *ngFor="let item of despesas()">
+              <td class="text-muted fw-medium py-3 ps-4">{{ item.data | brFmt:'data' }}</td>
+
+              <td class="fw-bold text-dark py-3">{{ item.descricao }}</td>
+              <td class="py-3">
+                <span class="badge border bg-light text-secondary me-2">{{ item.tipo }}</span>
+                <span *ngIf="item.ehPessoal" class="badge bg-warning text-dark"><i class="bi bi-person-fill"></i> Pessoal</span>
+              </td>
+
+              <td class="text-end fw-bold text-danger pe-4 py-3">- {{ item.valor | brFmt:'moeda' }}</td>
+
+              <td class="text-end pe-4">
+                <button class="btn btn-link text-muted p-0 shadow-none" (click)="excluir(item.id)">
+                  <i class="bi bi-trash3-fill hover-danger"></i>
+                </button>
+              </td>
+            </tr>
+
+            <tr *ngIf="despesas().length === 0 && !loading()">
+              <td colspan="5" class="text-center py-5 text-muted">
+                <i class="bi bi-receipt fs-1 d-block mb-3 opacity-25"></i>
+                Nenhuma despesa registrada. Lançamentos aparecerão aqui.
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

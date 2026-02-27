@@ -1,0 +1,62 @@
+// Variáveis e Utilitários
+.ls-tight { letter-spacing: -0.025em; }
+
+.icon-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 1.1rem;
+}
+
+.avatar-box {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px; // Shape mais moderno estilo app
+}
+
+// Estilização das Abas Laterais
+.list-group-item {
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #495057;
+
+  &:hover:not(.active-tab) {
+    background-color: #f8f9fa;
+  }
+}
+
+.active-tab {
+  background-color: #f0fdf4 !important; // Fundo verde super sutil
+  border-left: 4px solid #198754 !important; // Borda indicadora
+  color: #198754 !important;
+
+  .icon-circle {
+    background-color: #198754;
+    color: white;
+  }
+}
+
+// Customização de Inputs (Soft Borders)
+.form-control, .form-select, .input-group-text {
+  border-color: #dee2e6;
+  &:focus {
+    border-color: #198754;
+    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.1);
+  }
+}
+
+// Animação de Troca de Aba
+.fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

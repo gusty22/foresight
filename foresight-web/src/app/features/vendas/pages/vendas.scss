@@ -1,0 +1,67 @@
+/* Layout da Tela de Vendas (Tela Normal) */
+.list-group-item { cursor: pointer; transition: all 0.2s; }
+.list-group-item:hover { background-color: #f8f9fa; }
+.list-group-item.active { background-color: #198754; border-color: #198754; color: white !important; }
+.list-group-item.active .text-muted { color: rgba(255,255,255,0.8) !important; }
+
+/* --- FOLHA DE ESTILO DE IMPRESSÃO (NOTA TIPO CUPOM/A4) --- */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm; /* Margem controlada para não estourar */
+  }
+
+  body * { visibility: hidden; } /* Esconde o sistema */
+
+  #print-section, #print-section * {
+    visibility: visible; /* Mostra só a nota */
+  }
+
+  #print-section {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    font-family: 'Courier New', Courier, monospace; /* Fonte monoespaçada clássica */
+    color: #000;
+    font-size: 12px;
+    background: white;
+  }
+
+  /* Cabeçalho Compacto */
+  .main-header {
+    border-bottom: 2px dashed #000;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* Tabela Limpa */
+  .produtos-table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+
+  .produtos-table th {
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #000;
+    padding: 5px 0;
+    text-align: left;
+  }
+
+  .produtos-table td {
+    padding: 5px 0;
+    border-bottom: 1px dotted #ccc;
+  }
+
+  .footer-info {
+    margin-top: 20px;
+    border-top: 2px dashed #000;
+    padding-top: 10px;
+  }
+
+  /* Remove cores e sombras na impressão */
+  .badge, .btn, .card { border: none; box-shadow: none; }
+}

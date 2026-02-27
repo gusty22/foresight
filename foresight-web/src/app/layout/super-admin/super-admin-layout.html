@@ -1,0 +1,78 @@
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <i class="bi bi-shield-lock-fill"></i>
+        <span>Foresight <span class="badge-master">MASTER</span></span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-label">Plataforma</div>
+        <a routerLink="/backoffice/dashboard" routerLinkActive="active" class="nav-item">
+          <i class="bi bi-pie-chart-fill"></i>
+          <span>Visão Global</span>
+        </a>
+        <a routerLink="/backoffice/empresas" routerLinkActive="active" class="nav-item">
+          <i class="bi bi-building-gear"></i>
+          <span>Gestão de Tenants</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Segurança</div>
+        <a routerLink="/backoffice/auditoria" routerLinkActive="active" class="nav-item">
+          <i class="bi bi-shield-check"></i>
+          <span>Logs Auditoria</span>
+        </a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-profile">
+        <div class="avatar">AD</div>
+        <div class="user-info">
+          <div class="user-name">Admin Root</div>
+          <div class="user-role">Super Admin</div>
+        </div>
+        <button class="btn-icon" (click)="sair()" title="Sair" aria-label="Sair">
+          <i class="bi bi-box-arrow-left"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Viewport -->
+  <main class="viewport">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="input-icon">
+          <i class="bi bi-search"></i>
+          <input type="text" class="form-control" placeholder="Buscar...">
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="status-indicator" aria-label="Status do sistema: Operacional">
+          <span class="dot pulse"></span>
+          <span class="status-text">Sistema Operacional</span>
+        </div>
+        <button class="btn-icon" aria-label="Notificações">
+          <i class="bi bi-bell"></i>
+        </button>
+        <div class="user-dropdown" tabindex="0" role="button" aria-haspopup="true" aria-label="Menu do usuário">
+          <div class="avatar">AD</div>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Area onde as rotas filhas são renderizadas -->
+    <div class="content">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

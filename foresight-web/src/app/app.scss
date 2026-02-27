@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+
+:root {
+  --primary: #15803d; // Verde Foresight
+  --background: #f8fafc;
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, .fw-display {
+  font-family: var(--font-display);
+}
+
+.fs-card {
+  background: white;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.btn-success {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  &:hover { background-color: #166534; }
+}

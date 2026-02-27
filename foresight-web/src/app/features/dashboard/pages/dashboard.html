@@ -1,0 +1,144 @@
+<div class="dashboard-container container-fluid p-4">
+
+  <div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+      <h3 class="fw-bold text-dark m-0 tracking-tight">Visão Geral</h3>
+      <p class="text-muted small m-0">Acompanhamento em tempo real da saúde financeira.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm" (click)="carregarDados()" [disabled]="loading()">
+        <i class="bi bi-arrow-clockwise" [class.spinner-border-sm]="loading()" [class.spinner-border]="loading()"></i>
+        <span *ngIf="!loading()"> Atualizar</span>
+      </button>
+      <button class="btn btn-dark btn-sm fw-bold" routerLink="/sistema/vendas">
+        <i class="bi bi-plus-lg"></i> Nova Venda
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading()" class="text-center py-5">
+    <div class="spinner-border text-success" role="status"></div>
+  </div>
+
+  <div *ngIf="erro()" class="alert alert-danger border-0 shadow-sm">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> Falha ao carregar os indicadores. Tente novamente.
+  </div>
+
+  <ng-container *ngIf="!loading() && !erro() && resumo() as dados">
+    <div class="row g-4 mb-4">
+
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3 h-100 rounded-4">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <span class="text-muted small fw-bold text-uppercase">Faturamento (Mês)</span>
+            <div class="icon-box bg-success-subtle text-success rounded-circle p-2">
+              <i class="bi bi-currency-dollar"></i>
+            </div>
+          </div>
+          <h3 class="fw-bolder text-dark m-0">{{ dados.faturamentoMes | brFmt:'moeda' }}</h3>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3 h-100 rounded-4">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <span class="text-muted small fw-bold text-uppercase">Lucro Líquido</span>
+            <div class="icon-box bg-primary-subtle text-primary rounded-circle p-2">
+              <i class="bi bi-wallet2"></i>
+            </div>
+          </div>
+          <h3 class="fw-bolder m-0" [ngClass]="dados.lucroLiquido >= 0 ? 'text-success' : 'text-danger'">
+            {{ dados.lucroLiquido | brFmt:'moeda' }}
+          </h3>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3 h-100 rounded-4" [ngClass]="{'border-danger border-start border-4': dados.estoqueCritico > 0}">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <span class="text-muted small fw-bold text-uppercase" [class.text-danger]="dados.estoqueCritico > 0">Estoque Crítico</span>
+            <div class="icon-box bg-warning-subtle text-warning rounded-circle p-2" *ngIf="dados.estoqueCritico > 0">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+          </div>
+          <h3 class="fw-bolder text-dark m-0">{{ dados.estoqueCritico }}</h3>
+          <small class="text-muted extra-small">Itens abaixo do mínimo</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+
+      <div class="col-lg-5">
+        <div class="card border-0 shadow-sm p-4 h-100 rounded-4">
+          <div class="d-flex justify-content-between mb-4">
+            <h6 class="fw-bold m-0">Meta de Sobrevivência</h6>
+            <span class="badge bg-light text-dark border">Ponto de Equilíbrio</span>
+          </div>
+
+          <div class="text-center py-3 mb-3">
+            <span class="d-block text-muted small text-uppercase fw-bold">Saldo em Caixa</span>
+            <span class="display-6 fw-bold text-dark">{{ dados.saldoCaixa | brFmt:'moeda' }}</span>
+            <small class="text-muted d-block mt-1">Meta Mínima: {{ dados.metaSobrevivencia | brFmt:'moeda' }}</small>
+          </div>
+
+          <div class="d-flex justify-content-between small fw-bold mb-2 text-muted">
+            <span>Progresso Mensal</span>
+            <span>{{ dados.percentualMeta | brFmt:'decimal' }}%</span>
+          </div>
+          <div class="progress" style="height: 10px;">
+            <div class="progress-bar bg-success" role="progressbar"
+                 [style.width]="getProgressoWidth()"
+                 [class.bg-danger]="dados.percentualMeta < 50"
+                 [class.bg-warning]="dados.percentualMeta >= 50 && dados.percentualMeta < 100"
+                 [class.bg-success]="dados.percentualMeta >= 100">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-7">
+        <div class="card border-0 shadow-sm p-4 h-100 rounded-4">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h6 class="fw-bold m-0">Movimentações Recentes</h6>
+            <a routerLink="/sistema/fluxo-caixa" class="text-decoration-none small fw-bold">Ver tudo</a>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle table-borderless mb-0">
+              <thead class="text-muted small text-uppercase border-bottom">
+              <tr>
+                <th class="ps-0">Descrição</th>
+                <th>Categoria</th>
+                <th>Data</th>
+                <th class="text-end pe-0">Valor</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr *ngFor="let mov of dados.movimentacoesRecentes">
+                <td class="ps-0">
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle p-1" [ngClass]="mov.tipo === 'ENTRADA' ? 'bg-success' : 'bg-danger'"></div>
+                    <span class="fw-medium text-dark">{{ mov.descricao }}</span>
+                  </div>
+                </td>
+                <td><span class="badge bg-light text-secondary border fw-normal">{{ mov.categoria }}</span></td>
+                <td class="text-muted small">{{ mov.data | brFmt:'dataHora' }}</td>
+                <td class="text-end pe-0 fw-bold" [ngClass]="mov.tipo === 'ENTRADA' ? 'text-success' : 'text-danger'">
+                  {{ mov.tipo === 'ENTRADA' ? '+' : '-' }} {{ mov.valor | brFmt:'moeda' }}
+                </td>
+              </tr>
+              <tr *ngIf="dados.movimentacoesRecentes.length === 0">
+                <td colspan="4" class="text-center text-muted py-5">
+                  <i class="bi bi-inbox fs-4 d-block mb-2 opacity-50"></i>
+                  Nenhuma movimentação recente.
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

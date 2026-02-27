@@ -1,0 +1,152 @@
+<div class="container-fluid p-4">
+
+  <div class="card border-0 shadow-sm p-4 mb-4 rounded-4 bg-white" *ngIf="!exibirModalEdicao()">
+    <h4 class="fw-bold mb-3 text-success"><i class="bi bi-plus-circle me-2"></i>Novo Produto</h4>
+
+    <form [formGroup]="produtoForm" (ngSubmit)="salvarProduto()" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label small fw-bold">Nome *</label>
+        <input type="text" formControlName="nome" class="form-control" [ngClass]="{'is-invalid': f['nome'].invalid && f['nome'].touched}" placeholder="Nome do produto">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">Custo (R$) *</label>
+        <input type="text" [value]="exibicaoCusto()" (input)="formatarMoedaParaForm($event, 'precoCusto')" class="form-control" [ngClass]="{'is-invalid': f['precoCusto'].invalid && f['precoCusto'].touched}" placeholder="0,00">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">Venda (R$) *</label>
+        <input type="text" [value]="exibicaoVenda()" (input)="formatarMoedaParaForm($event, 'precoVenda')" class="form-control" [ngClass]="{'is-invalid': f['precoVenda'].invalid && f['precoVenda'].touched}" placeholder="0,00">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">Estoque *</label>
+        <input type="number" formControlName="estoqueAtual" class="form-control" [ngClass]="{'is-invalid': f['estoqueAtual'].invalid && f['estoqueAtual'].touched}" placeholder="Qtd">
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm" [disabled]="produtoForm.invalid">Salvar</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card border-0 shadow-sm p-4 rounded-4 bg-white">
+    <div class="row mb-4 align-items-center">
+      <div class="col-md-4">
+        <h5 class="fw-bold m-0">Catálogo de Produtos</h5>
+      </div>
+      <div class="col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" class="form-control border-start-0" placeholder="Pesquisar por nome ou status..."
+                 (input)="termoPesquisa.set($any($event.target).value)">
+        </div>
+      </div>
+      <div class="col-md-3 text-end">
+        <select class="form-select d-inline-block w-auto" (change)="itensPorPagina.set(+$any($event.target).value)">
+          <option value="5">Ver 5</option>
+          <option value="10">Ver 10</option>
+          <option value="20">Ver 20</option>
+        </select>
+      </div>
+    </div>
+
+    <div *ngIf="loading()" class="text-center py-4">
+      <div class="spinner-border text-success" role="status"></div>
+    </div>
+
+    <div class="table-responsive" *ngIf="!loading()">
+      <table class="table table-hover align-middle">
+        <thead class="table-light small text-muted text-uppercase">
+        <tr>
+          <th>Nome</th>
+          <th>Custo</th>
+          <th>Venda</th>
+          <th>Estoque</th>
+          <th>Lucro (R$)</th>
+          <th>Margem (%)</th>
+          <th>Status</th>
+          <th class="text-center">Ações</th>
+        </tr>
+        </thead>
+        <tbody class="small">
+        <tr *ngFor="let p of produtosPaginados()">
+          <td class="fw-bold">{{ p.nome }}</td>
+
+          <td>{{ p.precoCusto | brFmt:'moeda' }}</td>
+          <td>{{ p.precoVenda | brFmt:'moeda' }}</td>
+
+          <td><span class="badge bg-light text-dark border">{{ p.estoqueAtual }} un</span></td>
+
+          <td class="fw-bold text-success">
+            {{ p.lucroReal | brFmt:'moeda' }}
+          </td>
+
+          <td [ngClass]="p.margemReal > 20 ? 'text-success fw-bold' : 'text-danger fw-bold'">
+            {{ (p.margemReal / 100) | brFmt:'percent' }}
+          </td>
+
+          <td><span class="badge rounded-pill" [ngClass]="p.alertaStatus === 'OK' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'">{{ p.alertaStatus }}</span></td>
+          <td class="text-center">
+            <button class="btn btn-outline-primary btn-sm me-2" (click)="abrirEdicao(p)"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-outline-danger btn-sm" (click)="excluirProduto(p.id)"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>
+        <tr *ngIf="produtosPaginados().length === 0">
+          <td colspan="8" class="text-center text-muted py-3">Nenhum produto cadastrado.</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-3" *ngIf="totalPaginas() > 1">
+      <span class="text-muted small">Página {{ paginaAtual() }} de {{ totalPaginas() }}</span>
+      <nav>
+        <ul class="pagination pagination-sm m-0">
+          <li class="page-item" [class.disabled]="paginaAtual() === 1">
+            <button class="page-link" (click)="paginaAtual.set(paginaAtual() - 1)">Anterior</button>
+          </li>
+          <li class="page-item" [class.disabled]="paginaAtual() === totalPaginas()">
+            <button class="page-link" (click)="paginaAtual.set(paginaAtual() + 1)">Próxima</button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop fade show" *ngIf="exibirModalEdicao()"></div>
+<div class="modal fade show d-block" *ngIf="exibirModalEdicao()" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-0 bg-light rounded-top-4">
+        <h5 class="fw-bold m-0"><i class="bi bi-pencil-square me-2 text-primary"></i>Editar Produto</h5>
+        <button type="button" class="btn-close" (click)="fecharModal()"></button>
+      </div>
+
+      <form [formGroup]="produtoForm" (ngSubmit)="salvarProduto()">
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Nome do Produto *</label>
+            <input type="text" formControlName="nome" class="form-control" [ngClass]="{'is-invalid': f['nome'].invalid && f['nome'].touched}">
+          </div>
+          <div class="row">
+            <div class="col-6 mb-3">
+              <label class="form-label fw-bold small">Custo (R$) *</label>
+              <input type="text" [value]="exibicaoCusto()" (input)="formatarMoedaParaForm($event, 'precoCusto')" class="form-control" [ngClass]="{'is-invalid': f['precoCusto'].invalid && f['precoCusto'].touched}">
+            </div>
+            <div class="col-6 mb-3">
+              <label class="form-label fw-bold small">Venda (R$) *</label>
+              <input type="text" [value]="exibicaoVenda()" (input)="formatarMoedaParaForm($event, 'precoVenda')" class="form-control" [ngClass]="{'is-invalid': f['precoVenda'].invalid && f['precoVenda'].touched}">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Estoque Atual *</label>
+            <input type="number" formControlName="estoqueAtual" class="form-control" [ngClass]="{'is-invalid': f['estoqueAtual'].invalid && f['estoqueAtual'].touched}">
+          </div>
+        </div>
+        <div class="modal-footer border-0 p-4 pt-0">
+          <button type="button" class="btn btn-light fw-bold" (click)="fecharModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary fw-bold px-4 shadow-sm" [disabled]="produtoForm.invalid">Salvar Alterações</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>

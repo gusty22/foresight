@@ -1,0 +1,60 @@
+services:
+  # 1. Banco de Dados
+  db:
+    image: postgres:15-alpine
+    container_name: foresight_db
+    environment:
+      POSTGRES_DB: foresight_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d foresight_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - foresight_data:/var/lib/postgresql/data
+    networks:
+      - foresight_net
+
+  # 2. Backend (Spring Boot)
+  backend:
+    build:
+      context: ./foresight-api
+      dockerfile: Dockerfile
+    container_name: foresight_api
+    ports:
+      - "8080:8080"
+    environment:
+      # Injeta essas variáveis no application.properties do Java dinamicamente
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/foresight_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      db:
+        condition: service_healthy # Aguarda o Postgres ficar pronto para iniciar o Java
+    networks:
+      - foresight_net
+
+  # 3. Frontend (Angular)
+  frontend:
+    build:
+      context: ./foresight-web
+      dockerfile: Dockerfile
+    container_name: foresight_web
+    ports:
+      - "4200:80" # Mapeia a porta 80 do Nginx (container) para a 4200 (sua máquina)
+    depends_on:
+      - backend
+    networks:
+      - foresight_net
+
+volumes:
+  foresight_data:
+
+networks:
+  foresight_net:
+    driver: bridge

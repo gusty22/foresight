@@ -1,0 +1,46 @@
+<div class="container-fluid p-4 p-md-5">
+
+  <div class="row align-items-end mb-4">
+    <div class="col">
+      <h2 class="fw-bold text-dark m-0 ls-tight">Fluxo de Caixa</h2>
+      <p class="text-muted m-0">Movimentações financeiras detalhadas.</p>
+    </div>
+    <div class="col-auto text-end">
+      <small class="text-muted text-uppercase fw-bold d-block">Saldo Acumulado</small>
+      <h2 class="fw-bold m-0" [ngClass]="saldoTotal() >= 0 ? 'text-success' : 'text-danger'">
+        {{ saldoTotal() | brFmt:'moeda' }}
+      </h2>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light text-muted small text-uppercase">
+        <tr>
+          <th class="ps-4 py-3">Data</th>
+          <th>Descrição</th>
+          <th>Categoria</th>
+          <th class="text-end pe-4">Valor</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngFor="let m of movimentacoes()">
+          <td class="ps-4 text-muted fw-medium">{{ m.dataHora | brFmt:'dataHora' }}</td>
+
+          <td>
+            <span class="fw-bold text-dark">{{ m.descricao }}</span>
+          </td>
+          <td>
+            <span class="badge bg-light text-secondary border">{{ m.categoriaFluxo || 'Geral' }}</span>
+          </td>
+
+          <td class="text-end pe-4 fw-bold" [ngClass]="m.tipo === 'ENTRADA' ? 'text-success' : 'text-danger'">
+            {{ m.tipo === 'ENTRADA' ? '+' : '-' }} {{ m.valor | brFmt:'moeda' }}
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,71 @@
+<div class="container-fluid p-4">
+  <div class="mb-4 d-flex justify-content-between align-items-center">
+    <div>
+      <h2 class="fw-bold text-dark">DRE Mensal</h2>
+      <p class="text-muted small">Demonstrativo de Resultados do Exercício</p>
+    </div>
+    <button (click)="carregarDre()" class="btn btn-outline-primary btn-sm rounded-pill">
+      <i class="bi bi-arrow-clockwise me-1"></i> Atualizar Dados
+    </button>
+  </div>
+
+  <div *ngIf="loading()" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <div class="card border-0 shadow-sm p-5 rounded-4 bg-white" *ngIf="!loading() && dre()">
+    <div class="row mb-5 border-bottom pb-4">
+      <div class="col-md-6">
+        <h5 class="text-uppercase small fw-bold text-muted mb-1">Resultado Final</h5>
+
+        <h1 class="fw-bold mb-0" [ngClass]="dre().lucroLiquido > 0 ? 'text-success' : 'text-danger'">
+          {{ dre().lucroLiquido | brFmt:'moeda' }}
+        </h1>
+
+      </div>
+      <div class="col-md-6 text-end">
+        <div class="d-inline-block text-start p-3 bg-light rounded-3">
+          <span class="text-muted extra-small d-block text-uppercase">Margem Líquida</span>
+          <span class="fw-bold fs-4">{{ dre().margemLiquidaPercentual }}%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-borderless align-middle">
+        <tbody>
+        <tr class="border-bottom">
+          <td class="py-3 fw-bold text-uppercase small">(=) Faturamento Bruto (PJ)</td>
+          <td class="py-3 text-end fw-bold text-success">{{ dre().faturamentoTotal | brFmt:'moeda' }}</td>
+        </tr>
+        <tr class="text-muted small">
+          <td class="py-2 ps-4">(-) Custos de Mercadorias (CPV)</td>
+          <td class="py-2 text-end">- {{ dre().custosProdutosVendidos | brFmt:'moeda' }}</td>
+        </tr>
+        <tr class="border-bottom">
+          <td class="py-3 fw-bold text-uppercase small">(=) Lucro Bruto</td>
+          <td class="py-3 text-end fw-bold">{{ dre().lucroBruto | brFmt:'moeda' }}</td>
+        </tr>
+        <tr class="text-muted small">
+          <td class="py-2 ps-4">(-) Despesas Operacionais Fixas</td>
+          <td class="py-2 text-end text-danger">- {{ dre().despesasOperacionais | brFmt:'moeda' }}</td>
+        </tr>
+        <tr class="bg-dark text-white">
+          <td class="py-4 ps-3 rounded-start fw-bold fs-5">(=) LUCRO LÍQUIDO REAL</td>
+          <td class="py-4 pe-3 text-end rounded-end fw-bold fs-5" [class.text-success]="dre().lucroLiquido > 0">
+            {{ dre().lucroLiquido | brFmt:'moeda' }}
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="alert alert-warning border-0 mt-5 p-4 rounded-4 small">
+      <h6 class="fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Segurança Patrimonial</h6>
+      <p class="mb-0">
+        Este relatório ignora suas <strong>contas pessoais (PF)</strong> para mostrar se o seu negócio é viável sozinho.
+        Se o lucro líquido for menor que o pro-labore desejado, você precisa reajustar seus preços no simulador.
+      </p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,166 @@
+<div class="container-fluid p-4 d-print-none">
+  <div class="row g-4">
+
+    <div class="col-md-5">
+      <div class="card border-0 shadow-sm p-4 rounded-4 bg-white h-100">
+        <h4 class="fw-bold mb-4 text-success"><i class="bi bi-cart-plus me-2"></i>Nova Venda</h4>
+
+        <div class="mb-4 p-3 bg-light rounded-3">
+          <label class="small fw-bold text-muted text-uppercase">Cliente *</label>
+          <input type="text" [(ngModel)]="cliente.nome" class="form-control mb-2" placeholder="Nome do Cliente (Obrigatório)">
+
+          <div class="row g-2">
+            <div class="col-6">
+              <input type="text" [value]="cliente.telefone" (input)="formatarTelefone($event)" class="form-control form-control-sm" placeholder="Telefone">
+            </div>
+            <div class="col-6">
+              <input type="text" [value]="cliente.documento" (input)="formatarDocumento($event)" class="form-control form-control-sm" placeholder="CPF/CNPJ">
+            </div>
+          </div>
+        </div>
+
+        <hr class="text-muted opacity-25">
+
+        <div class="input-group mb-3">
+          <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+          <input type="text" [(ngModel)]="termoBuscaProduto" class="form-control border-start-0" placeholder="Buscar produto...">
+        </div>
+
+        <div class="list-group mb-3 border rounded-3 overflow-auto" style="height: 250px;">
+          <button *ngFor="let p of produtosFiltrados()"
+                  type="button"
+                  class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                  [class.active]="produtoSelecionado?.id === p.id"
+                  (click)="selecionarProduto(p)">
+            <div>
+              <div class="fw-bold">{{ p.nome }}</div>
+              <small class="text-muted" [class.text-white-50]="produtoSelecionado?.id === p.id">Estoque: {{ p.estoqueAtual }}</small>
+            </div>
+            <span class="badge bg-primary rounded-pill">{{ p.precoVenda | currency:'BRL' }}</span>
+          </button>
+        </div>
+
+        <div class="row align-items-end">
+          <div class="col-4">
+            <label class="small fw-bold">Qtd</label>
+            <input type="number" [(ngModel)]="quantidadeSelecionada" class="form-control text-center fw-bold" min="1">
+          </div>
+          <div class="col-8">
+            <button class="btn btn-success w-100 fw-bold" (click)="adicionarAoCarrinho()"
+                    [disabled]="!produtoSelecionado">
+              <i class="bi bi-plus-lg me-1"></i> Adicionar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-7">
+      <div class="card border-0 shadow-sm p-4 rounded-4 bg-white h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h5 class="fw-bold m-0">Itens do Pedido</h5>
+          <span class="badge bg-dark">{{ carrinho().length }} itens</span>
+        </div>
+
+        <div class="table-responsive flex-grow-1 mb-3" style="max-height: 400px; overflow-y: auto;">
+          <table class="table table-hover align-middle">
+            <thead class="table-light small text-muted">
+            <tr>
+              <th>Produto</th>
+              <th class="text-center">Qtd</th>
+              <th class="text-end">Unit.</th>
+              <th class="text-end">Total</th>
+              <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr *ngFor="let item of carrinho(); let i = index">
+              <td>{{ item.nome }}</td>
+              <td class="text-center fw-bold">{{ item.quantidade }}</td>
+              <td class="text-end">{{ item.precoVenda | currency:'BRL' }}</td>
+              <td class="text-end fw-bold">{{ item.subtotal | currency:'BRL' }}</td>
+              <td class="text-end">
+                <button class="btn btn-link text-danger p-0" (click)="removerDoCarrinho(i)"><i class="bi bi-trash"></i></button>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+          <div *ngIf="carrinho().length === 0" class="text-center py-5 text-muted opacity-50">
+            <i class="bi bi-basket fs-1"></i>
+            <p>Carrinho vazio</p>
+          </div>
+        </div>
+
+        <div class="bg-light p-4 rounded-3 mt-auto">
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label class="small fw-bold text-muted">Forma de Pagamento</label>
+              <select [(ngModel)]="formaPagamento" class="form-select border-0 shadow-sm">
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="PIX">PIX</option>
+                <option value="CARTAO">Cartão Crédito / Débito</option> <option value="BOLETO">Boleto Bancário</option> <option value="CHEQUE">Cheque</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="small fw-bold text-muted">Status</label>
+              <select [(ngModel)]="statusPagamento" class="form-select border-0 shadow-sm"
+                      [ngClass]="statusPagamento === 'PAGO' ? 'text-success fw-bold' : 'text-danger fw-bold'">
+                <option value="PAGO">Pago</option>
+                <option value="PENDENTE">Pendente</option>
+              </select>
+            </div>
+
+            <div class="col-md-4" *ngIf="statusPagamento === 'PENDENTE'">
+              <label class="small fw-bold text-danger">Data Previsão / Vencimento</label>
+              <input type="date" [(ngModel)]="dataPrevisao" class="form-control border-danger shadow-sm">
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center border-top border-2 pt-3">
+            <div>
+              <span class="d-block small text-muted">Total a Pagar</span>
+              <h2 class="fw-bold text-dark m-0">{{ totalPedido() | currency:'BRL' }}</h2>
+            </div>
+            <button class="btn btn-dark btn-lg px-5 fw-bold rounded-pill shadow"
+                    (click)="finalizarVenda()" [disabled]="loading()">
+              <i class="bi bi-check-circle-fill me-2"></i> Finalizar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop fade show" *ngIf="loading() || showSuccessModal()"></div>
+<div class="modal fade show d-block" *ngIf="loading()" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered text-center">
+    <div class="modal-content p-5 border-0 shadow rounded-4">
+      <div class="spinner-border text-success mb-3" style="width: 3rem; height: 3rem;"></div>
+      <h5 class="fw-bold">Processando Venda...</h5>
+      <p class="text-muted small">Atualizando estoque e gerando nota.</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade show d-block" *ngIf="showSuccessModal()" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4">
+      <div class="modal-body">
+        <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+        <h3 class="fw-bold mt-3">Venda Realizada!</h3>
+        <p class="text-muted">Estoque atualizado com sucesso.</p>
+
+        <div class="d-grid gap-2 mt-4">
+          <button class="btn btn-dark btn-lg fw-bold" (click)="baixarNotaFiscal()">
+            <i class="bi bi-file-earmark-pdf me-2"></i> Visualizar Nota (PDF)
+          </button>
+          <button class="btn btn-outline-secondary" (click)="novaVenda()">
+            Nova Venda
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,123 @@
+<div class="empresas">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <div class="icon-wrapper">
+        <i class="bi bi-shield-lock-fill"></i>
+      </div>
+      <div>
+        <span class="badge badge-master">Acesso Nível Deus</span>
+        <h1 class="page-title">Gestão de Tenants</h1>
+        <p class="text-muted">Controle global das empresas assinantes do Foresight.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Métricas Rápidas -->
+  @if (!loading()) {
+    <div class="metrics-small">
+      <div class="metric-item">
+        <span class="metric-label">Total de Inquilinos</span>
+        <span class="metric-value">{{ totalEmpresas() }}</span>
+      </div>
+      <div class="metric-item success">
+        <span class="metric-label">Operando (Ativas)</span>
+        <span class="metric-value">{{ ativas() }}</span>
+      </div>
+      <div class="metric-item danger">
+        <span class="metric-label">Suspensas / Inadimplentes</span>
+        <span class="metric-value">{{ suspensas() }}</span>
+      </div>
+    </div>
+  }
+
+  <!-- Card Principal com Tabela -->
+  <div class="card">
+    <div class="card-header">
+      <div class="search-box">
+        <i class="bi bi-search"></i>
+        <input 
+          type="text" 
+          class="form-control" 
+          placeholder="Buscar empresa por Nome ou CNPJ..."
+          [ngModel]="termoBusca()" 
+          (ngModelChange)="termoBusca.set($event)"
+        >
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+      </div>
+    } @else {
+      <div class="table-responsive">
+        <table class="fs-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Razão Social</th>
+              <th>CNPJ</th>
+              <th>Data de Cadastro</th>
+              <th>Status</th>
+              <th class="actions-column">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (emp of empresasFiltradas(); track emp.id) {
+              <tr [class.row-suspended]="emp.status === 'SUSPENSA' || emp.status === 'INADIMPLENTE'">
+                <td class="id-column">#{{ emp.id }}</td>
+                <td class="company-name">{{ emp.razaoSocial }}</td>
+                <td>{{ emp.cnpj | brFmt:'doc' }}</td>
+                <td>{{ emp.dataCadastro | brFmt:'dataHora' }}</td>
+                <td>
+                  <span class="badge" [ngClass]="{
+                    'badge-success': emp.status === 'ATIVA',
+                    'badge-error': emp.status === 'SUSPENSA' || emp.status === 'INADIMPLENTE',
+                    'badge-warning': emp.status === 'CANCELADA'
+                  }">{{ emp.status }}</span>
+                </td>
+                <td class="actions-column">
+                  @if (emp.status !== 'ATIVA') {
+                    <button 
+                      class="btn btn-sm btn-success"
+                      (click)="mudarStatus(emp, 'ATIVA')"
+                      [disabled]="processandoId() === emp.id || emp.id === 1"
+                    >
+                      @if (processandoId() === emp.id) {
+                        <span class="spinner-small"></span>
+                      } @else {
+                        Ativar
+                      }
+                    </button>
+                  }
+                  @if (emp.status === 'ATIVA') {
+                    <button 
+                      class="btn btn-sm btn-danger"
+                      (click)="mudarStatus(emp, 'SUSPENSA')"
+                      [disabled]="processandoId() === emp.id || emp.id === 1"
+                      title="Suspende o login de todos os usuários desta empresa"
+                    >
+                      @if (processandoId() === emp.id) {
+                        <span class="spinner-small"></span>
+                      } @else {
+                        Suspender
+                      }
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="empty-state">
+                  <i class="bi bi-hdd-network"></i>
+                  <p>Nenhuma empresa encontrada com estes filtros.</p>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
