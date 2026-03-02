@@ -26,6 +26,9 @@ export class VendasComponent implements OnInit {
   statusPagamento = 'PAGO';
   dataPrevisao: string = '';
 
+  // 1️⃣ CORREÇÃO: Transformado em Signal para reatividade em tempo real
+  percentualDesconto = signal<number>(0);
+
   produtosDisponiveis = signal<any[]>([]);
   produtoSelecionado: any = null;
   quantidadeSelecionada: number = 1;
@@ -36,7 +39,6 @@ export class VendasComponent implements OnInit {
   }
 
   carregarProdutos(): void {
-    // Chamada ajustada para o endereço local correto
     this.http.get<any>('http://localhost:8080/api/produtos').subscribe({
       next: (res: any) => this.produtosDisponiveis.set(res.data ? res.data : res),
       error: () => console.error("Falha ao buscar produtos.")
@@ -107,7 +109,21 @@ export class VendasComponent implements OnInit {
     this.carrinho.update(itens => itens.filter((_, i) => i !== index));
   }
 
-  totalPedido = computed(() => this.carrinho().reduce((acc, item) => acc + item.subtotal, 0));
+  // 2️⃣ CORREÇÃO: Cálculos Reativos Acoplados aos Signals e Limite de 100%
+  atualizarDesconto(valor: number): void {
+    if (valor > 100) valor = 100;
+    if (valor < 0) valor = 0;
+    this.percentualDesconto.set(valor);
+  }
+
+  valorBruto = computed(() => this.carrinho().reduce((acc, item) => acc + item.subtotal, 0));
+
+  valorDesconto = computed(() => {
+    const perc = this.percentualDesconto() || 0;
+    return (this.valorBruto() * perc) / 100;
+  });
+
+  valorLiquidoFinal = computed(() => this.valorBruto() - this.valorDesconto());
 
   // --- FINALIZAR ---
   finalizarVenda(): void {
@@ -126,7 +142,8 @@ export class VendasComponent implements OnInit {
       itens: this.carrinho().map(i => ({ produtoId: i.id, quantidade: i.quantidade, precoUnitario: i.precoVenda })),
       formaPagamento: this.formaPagamento,
       status: this.statusPagamento,
-      dataPrevisao: this.dataPrevisao || undefined
+      dataPrevisao: this.dataPrevisao || undefined,
+      percentualDesconto: this.percentualDesconto() // Extrai o valor correto do Signal
     };
 
     this.vendaService.realizarVenda(payload).subscribe({
@@ -156,6 +173,9 @@ export class VendasComponent implements OnInit {
   novaVenda(): void {
     this.carrinho.set([]);
     this.cliente = { nome: '', documento: '', telefone: '' };
+    this.statusPagamento = 'PAGO';
+    this.formaPagamento = 'DINHEIRO';
+    this.percentualDesconto.set(0); // Zera o sinal de desconto
     this.showSuccessModal.set(false);
     this.ultimoIdVenda = null;
   }

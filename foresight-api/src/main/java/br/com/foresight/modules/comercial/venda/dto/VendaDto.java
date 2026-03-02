@@ -9,7 +9,10 @@ public record VendaDto(
         Long id,
         String cliente,
         String documentoCliente,
-        BigDecimal valorTotal,
+        BigDecimal valorBruto, // NOVO
+        BigDecimal percentualDesconto, // NOVO
+        BigDecimal valorDesconto, // NOVO
+        BigDecimal valorTotal, // Valor Final Liquido
         LocalDateTime data,
         String formaPagamento,
         String statusPagamento,

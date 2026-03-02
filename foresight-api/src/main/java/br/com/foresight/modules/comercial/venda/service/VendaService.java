@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.awt.Color;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -80,10 +81,22 @@ public class VendaService {
         venda.setEmpresa(empresa);
 
         List<ItemVenda> itens = processarItensEEstoque(request, empresa, venda);
-        BigDecimal total = calcularTotal(itens);
-
         venda.setItens(itens);
-        venda.setValorTotal(total);
+
+        // --- CÁLCULO FINANCEIRO SEGURO (BRUTO -> DESCONTO -> LÍQUIDO) ---
+        BigDecimal valorBruto = calcularTotal(itens);
+        BigDecimal percentualDesc = request.percentualDesconto() != null ? request.percentualDesconto() : BigDecimal.ZERO;
+
+        BigDecimal valorDesconto = valorBruto.multiply(percentualDesc)
+                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+
+        BigDecimal valorLiquidoTotal = valorBruto.subtract(valorDesconto);
+
+        venda.setValorBruto(valorBruto);
+        venda.setPercentualDesconto(percentualDesc);
+        venda.setValorDesconto(valorDesconto);
+        venda.setValorTotal(valorLiquidoTotal);
+
         vendaRepository.save(venda);
 
         if ("PAGO".equalsIgnoreCase(request.status())) {
@@ -199,11 +212,24 @@ public class VendaService {
         document.add(table);
         document.add(new Paragraph("\n"));
 
-        Paragraph totalPara = new Paragraph("VALOR TOTAL: " + brl.format(venda.getValorTotal()), FONT_TITLE);
-        totalPara.setAlignment(Element.ALIGN_RIGHT);
-        document.add(totalPara);
+        // 4. Seção Contábil (Subtotal, Desconto e Total)
+        PdfPTable tableTotais = new PdfPTable(2);
+        tableTotais.setWidthPercentage(100);
+        tableTotais.setWidths(new float[]{8f, 2f});
+
+        addTotalRow(tableTotais, "SUBTOTAL:", brl.format(venda.getValorBruto()), FONT_NORMAL);
+
+        if (venda.getValorDesconto() != null && venda.getValorDesconto().compareTo(BigDecimal.ZERO) > 0) {
+            addTotalRow(tableTotais, "DESCONTO (" + venda.getPercentualDesconto() + "%):", "- " + brl.format(venda.getValorDesconto()), FONT_NORMAL);
+        }
+
+        addTotalRow(tableTotais, "VALOR FINAL:", brl.format(venda.getValorTotal()), FONT_TITLE);
+
+        document.add(tableTotais);
         document.close();
     }
+
+    // --- MÉTODOS AUXILIARES ---
 
     private Cliente processarCliente(VendaRequest request, Empresa empresa) {
         if (request.cliente().documento() == null || request.cliente().documento().isBlank()) return null;
@@ -256,7 +282,7 @@ public class VendaService {
         fluxoCaixaService.registrarMovimentacaoInterna(
                 empresa,
                 (tipo == TipoMovimentacao.ENTRADA ? "Recebimento Venda #" : "Estorno Venda #") + venda.getId() + " - " + venda.getCliente(),
-                venda.getValorTotal(),
+                venda.getValorTotal(), // Usa sempre o valor líquido real (com desconto) para o financeiro
                 tipo,
                 CategoriaFluxo.EMPRESA
         );
@@ -267,6 +293,18 @@ public class VendaService {
         cell.setBackgroundColor(Color.LIGHT_GRAY);
         cell.setPadding(5);
         table.addCell(cell);
+    }
+
+    private void addTotalRow(PdfPTable table, String label, String value, Font font) {
+        PdfPCell cellLabel = new PdfPCell(new Phrase(label, font));
+        cellLabel.setBorder(Rectangle.NO_BORDER);
+        cellLabel.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        table.addCell(cellLabel);
+
+        PdfPCell cellValue = new PdfPCell(new Phrase(value, font));
+        cellValue.setBorder(Rectangle.NO_BORDER);
+        cellValue.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        table.addCell(cellValue);
     }
 
     private VendaDto converterParaDto(Venda v) {
@@ -280,11 +318,14 @@ public class VendaService {
                 v.getId(),
                 v.getCliente(),
                 v.getDocumentoCliente(),
+                v.getValorBruto(),
+                v.getPercentualDesconto(),
+                v.getValorDesconto(),
                 v.getValorTotal(),
-                v.getData(), // Data de criação
+                v.getData(),
                 v.getFormaPagamento(),
                 v.getStatusPagamento(),
-                v.getDataPrevisaoPagamento(), // Novo Campo Injetado
+                v.getDataPrevisaoPagamento(),
                 itensDto
         );
     }

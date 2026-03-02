@@ -15,6 +15,9 @@ export interface VendaDto {
   id: number;
   clienteNome: string;
   clienteDocumento?: string;
+  valorBruto: number; // NOVO
+  percentualDesconto: number; // NOVO
+  valorDesconto: number; // NOVO
   valorTotal: number;
   data: string;
   formaPagamento: string;
@@ -33,13 +36,13 @@ export interface VendaRequest {
   formaPagamento: string;
   status: string;
   dataPrevisao?: string;
+  percentualDesconto?: number; // NOVO
 }
 
 @Injectable({ providedIn: 'root' })
 export class VendaService {
   private http = inject(HttpClient);
 
-  // Endpoint local para comunicar com o Spring Boot no desenvolvimento
   private readonly API = 'http://localhost:8080/api/vendas';
 
   realizarVenda(request: VendaRequest): Observable<ApiResponse<VendaDto>> {

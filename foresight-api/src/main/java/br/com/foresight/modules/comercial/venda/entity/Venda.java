@@ -30,7 +30,20 @@ public class Venda extends BaseTenantEntity {
     @Column(name = "telefone_cliente", length = 20)
     private String telefoneCliente;
 
-    @Column(name = "valor_total", nullable = false)
+    // NOVO: Valor da soma dos itens antes do desconto
+    @Column(name = "valor_bruto", nullable = false, precision = 15, scale = 2)
+    private BigDecimal valorBruto;
+
+    // NOVO: Porcentagem informada pelo usuário (Ex: 10.00)
+    @Column(name = "percentual_desconto", precision = 5, scale = 2)
+    private BigDecimal percentualDesconto;
+
+    // NOVO: Valor real descontado (Ex: R$ 5,00)
+    @Column(name = "valor_desconto", precision = 15, scale = 2)
+    private BigDecimal valorDesconto;
+
+    // ATUALIZADO: Passa a ser o Valor Final (Líquido) pago pelo cliente
+    @Column(name = "valor_total", nullable = false, precision = 15, scale = 2)
     private BigDecimal valorTotal;
 
     @Column(name = "forma_pagamento", length = 50)

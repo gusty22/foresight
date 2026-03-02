@@ -105,7 +105,7 @@ CREATE INDEX idx_produto_empresa ON produtos(empresa_id);
 CREATE INDEX idx_produto_categoria ON produtos(categoria);
 
 -- =============================================================================
--- 5. VENDAS
+-- 5. VENDAS (Atualizado com Lógica de Descontos)
 -- =============================================================================
 CREATE TABLE vendas (
                         id BIGSERIAL PRIMARY KEY,
@@ -114,7 +114,10 @@ CREATE TABLE vendas (
                         cliente_nome_historico VARCHAR(150) NOT NULL,
                         documento_cliente VARCHAR(20),
                         telefone_cliente VARCHAR(20),
-                        valor_total NUMERIC(12,2) NOT NULL,
+                        valor_bruto NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+                        percentual_desconto NUMERIC(5,2),
+                        valor_desconto NUMERIC(15,2),
+                        valor_total NUMERIC(15,2) NOT NULL,
                         forma_pagamento VARCHAR(50),
                         status_pagamento VARCHAR(20), -- PENDENTE, PAGO, CANCELADO
                         data_previsao_pagamento DATE,
@@ -139,7 +142,7 @@ CREATE TABLE itens_venda (
                              venda_id BIGINT NOT NULL REFERENCES vendas(id) ON DELETE CASCADE,
                              produto_id BIGINT REFERENCES produtos(id) ON DELETE SET NULL,
                              quantidade INTEGER NOT NULL,
-                             preco_unitario NUMERIC(12,2) NOT NULL
+                             preco_unitario NUMERIC(15,2) NOT NULL
 );
 CREATE INDEX idx_item_venda ON itens_venda(venda_id);
 
@@ -151,7 +154,7 @@ CREATE TABLE despesas (
                           empresa_id BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
                           descricao VARCHAR(255) NOT NULL,
                           categoria VARCHAR(100),
-                          valor NUMERIC(12,2) NOT NULL,
+                          valor NUMERIC(15,2) NOT NULL,
                           tipo VARCHAR(50) NOT NULL, -- FIXA, VARIAVEL
                           data_vencimento DATE,
                           data TIMESTAMP NOT NULL,
@@ -175,10 +178,10 @@ CREATE TABLE fluxo_caixa (
                              id BIGSERIAL PRIMARY KEY,
                              empresa_id BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
                              descricao VARCHAR(255) NOT NULL,
-                             valor NUMERIC(12,2) NOT NULL,
+                             valor NUMERIC(15,2) NOT NULL,
                              tipo VARCHAR(20) NOT NULL, -- ENTRADA, SAIDA
                              data_hora TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                             saldo_apos_movimentacao NUMERIC(12,2) NOT NULL,
+                             saldo_apos_movimentacao NUMERIC(15,2) NOT NULL,
                              categoria_fluxo VARCHAR(50) DEFAULT 'EMPRESA', -- EMPRESA, PESSOAL
 
                              estornado BOOLEAN DEFAULT FALSE,

@@ -46,8 +46,7 @@
             <input type="number" [(ngModel)]="quantidadeSelecionada" class="form-control text-center fw-bold" min="1">
           </div>
           <div class="col-8">
-            <button class="btn btn-success w-100 fw-bold" (click)="adicionarAoCarrinho()"
-                    [disabled]="!produtoSelecionado">
+            <button class="btn btn-success w-100 fw-bold" (click)="adicionarAoCarrinho()" [disabled]="!produtoSelecionado">
               <i class="bi bi-plus-lg me-1"></i> Adicionar
             </button>
           </div>
@@ -62,7 +61,7 @@
           <span class="badge bg-dark">{{ carrinho().length }} itens</span>
         </div>
 
-        <div class="table-responsive flex-grow-1 mb-3" style="max-height: 400px; overflow-y: auto;">
+        <div class="table-responsive flex-grow-1 mb-3" style="max-height: 350px; overflow-y: auto;">
           <table class="table table-hover align-middle">
             <thead class="table-light small text-muted">
             <tr>
@@ -92,23 +91,38 @@
         </div>
 
         <div class="bg-light p-4 rounded-3 mt-auto">
-          <div class="row mb-3">
+
+          <div class="row mb-3 g-3">
             <div class="col-md-4">
-              <label class="small fw-bold text-muted">Forma de Pagamento</label>
+              <label class="small fw-bold text-muted">Pagamento</label>
               <select [(ngModel)]="formaPagamento" class="form-select border-0 shadow-sm">
                 <option value="DINHEIRO">Dinheiro</option>
                 <option value="PIX">PIX</option>
-                <option value="CARTAO">Cartão Crédito / Débito</option> <option value="BOLETO">Boleto Bancário</option> <option value="CHEQUE">Cheque</option>
+                <option value="CARTAO">Cartão Crédito / Débito</option>
+                <option value="BOLETO">Boleto Bancário</option>
+                <option value="CHEQUE">Cheque</option>
               </select>
             </div>
 
             <div class="col-md-4">
               <label class="small fw-bold text-muted">Status</label>
               <select [(ngModel)]="statusPagamento" class="form-select border-0 shadow-sm"
-                      [ngClass]="statusPagamento === 'PAGO' ? 'text-success fw-bold' : 'text-danger fw-bold'">
-                <option value="PAGO">Pago</option>
-                <option value="PENDENTE">Pendente</option>
+                      [ngClass]="{'text-success fw-bold': statusPagamento === 'PAGO', 'text-danger fw-bold': statusPagamento === 'PENDENTE'}">
+                <option value="PAGO" class="text-success fw-bold">Pago</option>
+                <option value="PENDENTE" class="text-danger fw-bold">Pendente</option>
               </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="small fw-bold text-primary">Desconto (%)</label>
+              <div class="input-group shadow-sm">
+                <input type="number"
+                       [ngModel]="percentualDesconto()"
+                       (ngModelChange)="atualizarDesconto($event)"
+                       class="form-control border-0 text-primary fw-bold"
+                       min="0" max="100">
+                <span class="input-group-text border-0 bg-white text-primary">%</span>
+              </div>
             </div>
 
             <div class="col-md-4" *ngIf="statusPagamento === 'PENDENTE'">
@@ -117,16 +131,26 @@
             </div>
           </div>
 
-          <div class="d-flex justify-content-between align-items-center border-top border-2 pt-3">
+          <div class="d-flex justify-content-between align-items-end border-top border-2 pt-3">
             <div>
-              <span class="d-block small text-muted">Total a Pagar</span>
-              <h2 class="fw-bold text-dark m-0">{{ totalPedido() | currency:'BRL' }}</h2>
+              <div class="d-flex justify-content-between mb-1" style="width: 220px;">
+                <span class="small text-muted">Subtotal:</span>
+                <span class="small fw-medium text-dark">{{ valorBruto() | currency:'BRL' }}</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2 text-danger" style="width: 220px;" *ngIf="percentualDesconto() > 0">
+                <span class="small">Desconto ({{ percentualDesconto() }}%):</span>
+                <span class="small fw-bold">- {{ valorDesconto() | currency:'BRL' }}</span>
+              </div>
+
+              <span class="d-block small fw-bold text-uppercase mt-2">Valor a Pagar</span>
+              <h2 class="fw-bold text-success m-0" style="font-size: 2.2rem;">{{ valorLiquidoFinal() | currency:'BRL' }}</h2>
             </div>
             <button class="btn btn-dark btn-lg px-5 fw-bold rounded-pill shadow"
-                    (click)="finalizarVenda()" [disabled]="loading()">
+                    (click)="finalizarVenda()" [disabled]="loading() || carrinho().length === 0">
               <i class="bi bi-check-circle-fill me-2"></i> Finalizar
             </button>
           </div>
+
         </div>
       </div>
     </div>

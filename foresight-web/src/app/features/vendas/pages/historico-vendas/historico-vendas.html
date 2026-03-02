@@ -35,9 +35,7 @@
         <tbody class="border-top-0">
         <tr *ngFor="let venda of vendas()">
           <td class="fw-bold text-muted ps-3 py-3">#{{ venda.id }}</td>
-
           <td class="py-3">{{ venda.data | brFmt:'dataHora' }}</td>
-
           <td class="py-3">
             <div class="fw-bold text-dark">{{ venda.clienteNome }}</div>
             <div class="text-muted extra-small">
@@ -51,8 +49,10 @@
                 {{ venda.statusPagamento }}
               </span>
           </td>
-
-          <td class="text-end fw-bold text-dark py-3">{{ venda.valorTotal | brFmt:'moeda' }}</td>
+          <td class="text-end fw-bold text-dark py-3">
+            <i *ngIf="venda.percentualDesconto > 0" class="bi bi-tags-fill text-primary me-1" title="Venda com desconto"></i>
+            {{ venda.valorTotal | brFmt:'moeda' }}
+          </td>
 
           <td class="text-center pe-3 py-3">
             <button class="btn btn-sm btn-light text-primary me-2" (click)="verDetalhes(venda.id)" title="Ver Detalhes">
@@ -80,14 +80,12 @@
     <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
 
       <ng-container *ngIf="vendaSelecionada() as venda">
-
         <div class="modal-header bg-light border-0 p-4">
           <h5 class="fw-bold m-0"><i class="bi bi-receipt me-2 text-primary"></i>Detalhes da Venda #{{ venda.id }}</h5>
           <button type="button" class="btn-close shadow-none" (click)="fecharModal()"></button>
         </div>
 
         <div class="modal-body p-4">
-
           <div class="row mb-4 bg-light p-3 rounded-3 border g-3">
             <div class="col-md-4 mb-2 mb-md-0">
               <label class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.7rem;">Cliente</label>
@@ -96,7 +94,6 @@
                 {{ (venda.clienteDocumento | brFmt:'doc') || 'Consumidor Final' }}
               </div>
             </div>
-
             <div class="col-md-4 mb-2 mb-md-0">
               <label class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.7rem;">Data da Venda</label>
               <div class="d-flex align-items-center gap-2 mt-1">
@@ -104,18 +101,15 @@
                 <span class="fw-medium text-dark">{{ venda.data | brFmt:'dataHora' }}</span>
               </div>
             </div>
-
             <div class="col-md-4">
               <label class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.7rem;">Status & Pagamento</label>
               <div class="d-flex flex-column mt-1">
                 <span class="badge rounded-pill mb-1 w-50" [ngClass]="venda.statusPagamento === 'PAGO' ? 'bg-success' : 'bg-warning text-dark'">
                   {{ venda.statusPagamento }}
                 </span>
-
                 <span class="small text-muted fw-medium" *ngIf="venda.statusPagamento === 'PAGO' && venda.dataPagamento">
                   <i class="bi bi-check2-all text-success"></i> {{ venda.dataPagamento | date:'dd/MM/yyyy' }}
                 </span>
-
                 <span class="small text-warning fw-medium" *ngIf="venda.statusPagamento !== 'PAGO' && venda.dataPagamento">
                   <i class="bi bi-clock"></i> {{ venda.dataPagamento | date:'dd/MM/yyyy' }}
                 </span>
@@ -146,15 +140,29 @@
           </div>
 
           <div class="row bg-light p-4 rounded-3 align-items-center">
-            <div class="col-md-6">
+            <div class="col-md-5">
               <small class="text-muted d-block text-uppercase fw-bold mb-1">Forma de Pagamento</small>
               <strong class="text-dark fs-5">{{ venda.formaPagamento }}</strong>
             </div>
-            <div class="col-md-6 text-md-end mt-3 mt-md-0">
-              <small class="text-muted d-block text-uppercase fw-bold mb-1">Valor Total</small>
-              <h2 class="fw-bold text-success m-0">{{ venda.valorTotal | brFmt:'moeda' }}</h2>
+
+            <div class="col-md-7 d-flex flex-column align-items-end mt-3 mt-md-0">
+              <div class="d-flex justify-content-between mb-1" style="width: 200px;">
+                <span class="small text-muted fw-bold text-uppercase">Subtotal:</span>
+                <span class="small fw-bold text-dark">{{ venda.valorBruto | brFmt:'moeda' }}</span>
+              </div>
+
+              <div class="d-flex justify-content-between mb-2 text-danger" style="width: 200px;" *ngIf="venda.percentualDesconto > 0">
+                <span class="small fw-bold text-uppercase">Desconto ({{ venda.percentualDesconto }}%):</span>
+                <span class="small fw-bold">- {{ venda.valorDesconto | brFmt:'moeda' }}</span>
+              </div>
+
+              <div class="w-100 border-top mt-2 pt-2 text-end">
+                <small class="text-muted d-block text-uppercase fw-bold mb-1">Valor Líquido</small>
+                <h2 class="fw-bold text-success m-0">{{ venda.valorTotal | brFmt:'moeda' }}</h2>
+              </div>
             </div>
           </div>
+
         </div>
 
         <div class="modal-footer border-0 p-4 bg-light d-flex justify-content-between">
