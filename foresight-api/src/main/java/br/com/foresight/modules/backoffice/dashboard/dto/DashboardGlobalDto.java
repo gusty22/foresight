@@ -6,6 +6,6 @@ public record DashboardGlobalDto(
         long totalEmpresas,
         long empresasAtivas,
         long empresasSuspensas,
-        BigDecimal faturamentoMensalEstimado, // Soma de planos ativos
+        BigDecimal faturamentoMensalEstimado,
         long totalUsuariosGlobais
 ) {}

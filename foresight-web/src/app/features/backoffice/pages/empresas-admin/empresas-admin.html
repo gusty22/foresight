@@ -1,117 +1,107 @@
-<div class="empresas">
-  <!-- Page Header -->
-  <div class="page-header">
-    <div class="header-left">
-      <div class="icon-wrapper">
+<div class="empresas p-4 p-md-5">
+  <div class="page-header mb-5 d-flex justify-content-between align-items-end">
+    <div class="header-left d-flex align-items-center gap-4">
+      <div class="icon-wrapper bg-dark text-white rounded-4 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 2rem;">
         <i class="bi bi-shield-lock-fill"></i>
       </div>
       <div>
-        <span class="badge badge-master">Acesso Nível Deus</span>
-        <h1 class="page-title">Gestão de Tenants</h1>
-        <p class="text-muted">Controle global das empresas assinantes do Foresight.</p>
+        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger mb-2 px-3 py-1 rounded-pill fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">ACESSO NÍVEL DEUS</span>
+        <h1 class="page-title fw-bolder text-dark m-0 tracking-tight">Gestão de Tenants</h1>
+        <p class="text-muted m-0 small">Governança e controle global das empresas assinantes da plataforma.</p>
       </div>
     </div>
   </div>
 
-  <!-- Métricas Rápidas -->
-  @if (!loading()) {
-    <div class="metrics-small">
-      <div class="metric-item">
-        <span class="metric-label">Total de Inquilinos</span>
-        <span class="metric-value">{{ totalEmpresas() }}</span>
-      </div>
-      <div class="metric-item success">
-        <span class="metric-label">Operando (Ativas)</span>
-        <span class="metric-value">{{ ativas() }}</span>
-      </div>
-      <div class="metric-item danger">
-        <span class="metric-label">Suspensas / Inadimplentes</span>
-        <span class="metric-value">{{ suspensas() }}</span>
-      </div>
-    </div>
-  }
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center">
 
-  <!-- Card Principal com Tabela -->
-  <div class="card">
-    <div class="card-header">
-      <div class="search-box">
-        <i class="bi bi-search"></i>
-        <input 
-          type="text" 
-          class="form-control" 
-          placeholder="Buscar empresa por Nome ou CNPJ..."
-          [ngModel]="termoBusca()" 
-          (ngModelChange)="termoBusca.set($event)"
-        >
+      <div class="position-relative" style="width: 100%; max-width: 400px;">
+        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+        <input type="text" class="form-control form-control-lg bg-light border-0 ps-5"
+               placeholder="Buscar por Razão Social ou CNPJ..."
+               [formControl]="buscaControl">
+      </div>
+
+      <div class="text-end text-muted small fw-bold">
+        <i class="bi bi-hdd-network me-1"></i> {{ totalElementos() }} Registros Globais
       </div>
     </div>
 
     @if (loading()) {
-      <div class="loading-state">
-        <div class="spinner"></div>
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="text-muted small mt-3 fw-bold">Consultando Data Center...</p>
       </div>
     } @else {
       <div class="table-responsive">
-        <table class="fs-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Razão Social</th>
-              <th>CNPJ</th>
-              <th>Data de Cadastro</th>
-              <th>Status</th>
-              <th class="actions-column">Ações</th>
-            </tr>
+        <table class="table table-hover align-middle mb-0">
+          <thead class="bg-light text-muted small text-uppercase">
+          <tr>
+            <th class="ps-4 py-3">Tenant ID / Nome</th>
+            <th>Documento</th>
+            <th>Plano</th>
+            <th>Usuários</th>
+            <th>Status</th>
+            <th class="text-end pe-4">Governança</th>
+          </tr>
           </thead>
           <tbody>
-            @for (emp of empresasFiltradas(); track emp.id) {
-              <tr [class.row-suspended]="emp.status === 'SUSPENSA' || emp.status === 'INADIMPLENTE'">
-                <td class="id-column">#{{ emp.id }}</td>
-                <td class="company-name">{{ emp.razaoSocial }}</td>
-                <td>{{ emp.cnpj | brFmt:'doc' }}</td>
-                <td>{{ emp.dataCadastro | brFmt:'dataHora' }}</td>
+            @for (emp of empresas(); track emp.id) {
+              <tr [ngClass]="{'bg-danger bg-opacity-10': emp.status === 'SUSPENSA' || emp.status === 'INADIMPLENTE'}">
+
+                <td class="ps-4">
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="avatar-tenant bg-secondary text-white fw-bold rounded-circle d-flex justify-content-center align-items-center" style="width: 35px; height: 35px;">
+                      {{ emp.razaoSocial.charAt(0) }}
+                    </div>
+                    <div>
+                      <div class="fw-bold text-dark">{{ emp.razaoSocial }}</div>
+                      <div class="text-muted extra-small">ID: #{{ emp.id }} • {{ emp.dataCadastro | brFmt:'data' }}</div>
+                    </div>
+                  </div>
+                </td>
+
+                <td class="text-muted small fw-medium">{{ emp.cnpj | brFmt:'doc' }}</td>
+
                 <td>
-                  <span class="badge" [ngClass]="{
-                    'badge-success': emp.status === 'ATIVA',
-                    'badge-error': emp.status === 'SUSPENSA' || emp.status === 'INADIMPLENTE',
-                    'badge-warning': emp.status === 'CANCELADA'
+                  <span class="badge bg-dark px-2 py-1 rounded-2"><i class="bi bi-stars text-warning me-1"></i>{{ emp.plano || 'PRO' }}</span>
+                </td>
+
+                <td class="text-muted small fw-bold">
+                  <i class="bi bi-people me-1"></i> {{ emp.usuariosAtivos || 1 }}
+                </td>
+
+                <td>
+                  <span class="badge rounded-pill px-3 py-2" [ngClass]="{
+                    'bg-success-subtle text-success': emp.status === 'ATIVA',
+                    'bg-danger-subtle text-danger': emp.status === 'SUSPENSA' || emp.status === 'INADIMPLENTE',
+                    'bg-warning-subtle text-warning': emp.status === 'CANCELADA'
                   }">{{ emp.status }}</span>
                 </td>
-                <td class="actions-column">
+
+                <td class="text-end pe-4">
+                  <button class="btn btn-sm btn-light border text-primary shadow-sm me-2 fw-bold"
+                          title="Acessar sistema como este cliente"
+                          (click)="acessarComoEmpresa(emp.id)">
+                    <i class="bi bi-box-arrow-in-right"></i> Suporte
+                  </button>
+
                   @if (emp.status !== 'ATIVA') {
-                    <button 
-                      class="btn btn-sm btn-success"
-                      (click)="mudarStatus(emp, 'ATIVA')"
-                      [disabled]="processandoId() === emp.id || emp.id === 1"
-                    >
-                      @if (processandoId() === emp.id) {
-                        <span class="spinner-small"></span>
-                      } @else {
-                        Ativar
-                      }
+                    <button class="btn btn-sm btn-success fw-bold shadow-sm" (click)="prepararMudancaStatus(emp, 'ATIVA')">
+                      <i class="bi bi-check-circle me-1"></i> Ativar
                     </button>
-                  }
-                  @if (emp.status === 'ATIVA') {
-                    <button 
-                      class="btn btn-sm btn-danger"
-                      (click)="mudarStatus(emp, 'SUSPENSA')"
-                      [disabled]="processandoId() === emp.id || emp.id === 1"
-                      title="Suspende o login de todos os usuários desta empresa"
-                    >
-                      @if (processandoId() === emp.id) {
-                        <span class="spinner-small"></span>
-                      } @else {
-                        Suspender
-                      }
+                  } @else {
+                    <button class="btn btn-sm btn-outline-danger fw-bold shadow-sm" (click)="prepararMudancaStatus(emp, 'SUSPENSA')">
+                      <i class="bi bi-ban me-1"></i> Bloquear
                     </button>
                   }
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="6" class="empty-state">
-                  <i class="bi bi-hdd-network"></i>
-                  <p>Nenhuma empresa encontrada com estes filtros.</p>
+                <td colspan="6" class="text-center py-5">
+                  <i class="bi bi-server display-4 text-muted opacity-25 d-block mb-3"></i>
+                  <p class="text-muted fw-bold m-0">Nenhum tenant encontrado no servidor.</p>
                 </td>
               </tr>
             }
@@ -119,5 +109,54 @@
         </table>
       </div>
     }
+  </div>
+</div>
+
+<div class="modal-backdrop fade show" *ngIf="modalAcao().visivel"></div>
+<div class="modal fade show d-block" *ngIf="modalAcao().visivel" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+
+      <div class="modal-header border-0 p-4 pb-3" [ngClass]="modalAcao().novoStatus === 'ATIVA' ? 'bg-success-subtle' : 'bg-danger-subtle'">
+        <h5 class="fw-bold m-0 d-flex align-items-center" [ngClass]="modalAcao().novoStatus === 'ATIVA' ? 'text-success' : 'text-danger'">
+          <i class="bi me-2 fs-4" [ngClass]="modalAcao().novoStatus === 'ATIVA' ? 'bi-shield-check' : 'bi-shield-exclamation'"></i>
+          Auditoria de Segurança
+        </h5>
+        <button type="button" class="btn-close shadow-none" (click)="fecharModal()" [disabled]="processando()"></button>
+      </div>
+
+      <form [formGroup]="auditoriaForm" (ngSubmit)="confirmarMudancaStatus()">
+        <div class="modal-body p-4">
+          <p class="text-muted mb-4">Você está prestes a mudar o status operacional do tenant
+            <strong class="text-dark">{{ modalAcao().empresa?.razaoSocial }}</strong> para
+            <span class="badge bg-dark">{{ modalAcao().novoStatus }}</span>.
+          </p>
+
+          <div *ngIf="erroAuditoria()" class="alert alert-danger small fw-bold mb-3 border-danger border-opacity-25">
+            <i class="bi bi-x-circle-fill me-2"></i>{{ erroAuditoria() }}
+          </div>
+
+          <label class="form-label small fw-bold text-uppercase text-muted">Motivo da Intervenção (Obrigatório)*</label>
+          <textarea formControlName="motivo" class="form-control bg-light" rows="3"
+                    placeholder="Descreva o motivo legal/administrativo desta ação..."
+                    [ngClass]="{'is-invalid': auditoriaForm.controls['motivo'].invalid && auditoriaForm.controls['motivo'].touched}"></textarea>
+
+          <div class="form-text text-danger extra-small mt-1" *ngIf="auditoriaForm.controls['motivo'].errors?.['minlength'] && auditoriaForm.controls['motivo'].touched">
+            O motivo deve ser detalhado (mínimo de 10 caracteres).
+          </div>
+        </div>
+
+        <div class="modal-footer border-0 p-4 bg-light">
+          <button type="button" class="btn btn-outline-secondary fw-bold px-4" (click)="fecharModal()" [disabled]="processando()">Cancelar</button>
+          <button type="submit" class="btn fw-bold px-5"
+                  [ngClass]="modalAcao().novoStatus === 'ATIVA' ? 'btn-success' : 'btn-danger'"
+                  [disabled]="auditoriaForm.invalid || processando()">
+            <span *ngIf="processando()" class="spinner-border spinner-border-sm me-2"></span>
+            Confirmar e Registrar Log
+          </button>
+        </div>
+      </form>
+
+    </div>
   </div>
 </div>

@@ -1,7 +1,7 @@
 package br.com.foresight.modules.comercial.venda.entity;
 
 import br.com.foresight.core.domain.BaseEntity;
-import br.com.foresight.modules.comercial.catalogo.entity.Produto;
+import br.com.foresight.modules.comercial.produto.entity.Produto;
 import jakarta.persistence.*;
 import lombok.*;
 

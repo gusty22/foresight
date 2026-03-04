@@ -2,7 +2,9 @@ package br.com.foresight.modules.relatorio.service;
 
 import br.com.foresight.core.exception.RegraNegocioException;
 import br.com.foresight.core.tenant.TenantContext;
-import br.com.foresight.modules.comercial.catalogo.repository.IProdutoRepository;
+import br.com.foresight.modules.comercial.produto.repository.IProdutoRepository;
+import br.com.foresight.modules.comercial.venda.entity.Venda;
+import br.com.foresight.modules.comercial.venda.repository.IVendaRepository;
 import br.com.foresight.modules.financeiro.despesa.repository.IDespesaRepository;
 import br.com.foresight.modules.financeiro.fluxo_caixa.entity.CategoriaFluxo;
 import br.com.foresight.modules.financeiro.fluxo_caixa.repository.IFluxoCaixaRepository;
@@ -15,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +32,7 @@ public class RelatorioFinanceiroService {
     private final IFluxoCaixaRepository fluxoCaixaRepository;
     private final IDespesaRepository despesaRepository;
     private final IProdutoRepository produtoRepository;
+    private final IVendaRepository vendaRepository; // INJETADO PARA LER AS VENDAS
 
     private Long getTenantIdSeguro() {
         Long tenantId = TenantContext.getCurrentTenant();
@@ -41,27 +46,54 @@ public class RelatorioFinanceiroService {
     public DreDto gerarDreMensal(int mes) {
         Long tenantId = getTenantIdSeguro();
 
-        // 1. Faturamento Total
-        BigDecimal faturamento = fluxoCaixaRepository.somarPorCategoriaSeguro(tenantId, CategoriaFluxo.EMPRESA);
-        if (faturamento == null) faturamento = BigDecimal.ZERO;
+        // Limites de data baseados no mês solicitado (considerando o ano atual)
+        int anoAtual = YearMonth.now().getYear();
+        LocalDateTime inicioMes = LocalDate.of(anoAtual, mes, 1).atStartOfDay();
+        LocalDateTime fimMes = YearMonth.of(anoAtual, mes).atEndOfMonth().atTime(23, 59, 59);
 
-        // 2. Despesas (Corrigido com envio do tenantId)
+        // 1. Faturamento Total
+        BigDecimal faturamentoBruto = vendaRepository.somarFaturamentoPorPeriodo(tenantId, inicioMes, fimMes);
+        if (faturamentoBruto == null) faturamentoBruto = BigDecimal.ZERO;
+
+        // 2. Cálculo do CPV (Custo do Produto Vendido)
+        List<Venda> vendasDoMes = vendaRepository.findAllByEmpresaIdOrderByDataDesc(tenantId).stream()
+                .filter(v -> "PAGO".equalsIgnoreCase(v.getStatusPagamento()) &&
+                        v.getData().isAfter(inicioMes) && v.getData().isBefore(fimMes))
+                .toList();
+
+        BigDecimal custosMercadorias = BigDecimal.ZERO;
+        for (Venda venda : vendasDoMes) {
+            if (venda.getItens() != null) {
+                for (var item : venda.getItens()) {
+                    if (item.getProduto() != null && item.getProduto().getPrecoCusto() != null) {
+                        BigDecimal custoItem = item.getProduto().getPrecoCusto().multiply(BigDecimal.valueOf(item.getQuantidade()));
+                        custosMercadorias = custosMercadorias.add(custoItem);
+                    }
+                }
+            }
+        }
+
+        // 3. Lucro Bruto (Faturamento - CPV)
+        BigDecimal lucroBruto = faturamentoBruto.subtract(custosMercadorias);
+
+        // 4. Despesas Operacionais
         BigDecimal despesasOperacionais = despesaRepository.somarDespesasMes(tenantId, mes);
         if (despesasOperacionais == null) despesasOperacionais = BigDecimal.ZERO;
 
-        // 3. Lucro
-        BigDecimal lucroLiquido = faturamento.subtract(despesasOperacionais);
+        // 5. Lucro Líquido Real
+        BigDecimal lucroLiquido = lucroBruto.subtract(despesasOperacionais);
 
+        // 6. Margem Líquida
         Double margemLiquida = 0.0;
-        if (faturamento.compareTo(BigDecimal.ZERO) > 0) {
-            margemLiquida = lucroLiquido.divide(faturamento, 4, RoundingMode.HALF_UP)
+        if (faturamentoBruto.compareTo(BigDecimal.ZERO) > 0) {
+            margemLiquida = lucroLiquido.divide(faturamentoBruto, 4, RoundingMode.HALF_UP)
                     .multiply(BigDecimal.valueOf(100)).doubleValue();
         }
 
         return new DreDto(
-                faturamento,
-                BigDecimal.ZERO,
-                faturamento,
+                faturamentoBruto,
+                custosMercadorias, // AGORA O CPV ESTÁ SENDO ENVIADO PARA O FRONT!
+                lucroBruto,
                 despesasOperacionais,
                 lucroLiquido,
                 margemLiquida
@@ -101,7 +133,6 @@ public class RelatorioFinanceiroService {
         BigDecimal saldoPJ = fluxoCaixaRepository.somarPorCategoriaSeguro(tenantId, CategoriaFluxo.EMPRESA);
         if (saldoPJ == null) saldoPJ = BigDecimal.ZERO;
 
-        // Corrigido com envio do tenantId
         BigDecimal despesasFixas = despesaRepository.somarDespesasMes(tenantId, LocalDateTime.now().getMonthValue());
         if (despesasFixas == null) despesasFixas = BigDecimal.ZERO;
 
@@ -129,7 +160,6 @@ public class RelatorioFinanceiroService {
     public Map<String, Object> calcularPontoEquilibrio() {
         Long tenantId = getTenantIdSeguro();
 
-        // Corrigido com envio do tenantId
         BigDecimal despesasFixas = despesaRepository.somarDespesasMes(tenantId, LocalDateTime.now().getMonthValue());
         if (despesasFixas == null) despesasFixas = BigDecimal.ZERO;
 

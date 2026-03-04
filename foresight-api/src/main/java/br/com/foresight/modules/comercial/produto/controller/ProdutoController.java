@@ -1,9 +1,9 @@
-package br.com.foresight.modules.comercial.catalogo.controller;
+package br.com.foresight.modules.comercial.produto.controller;
 
 import br.com.foresight.core.web.ApiResponse;
-import br.com.foresight.modules.comercial.catalogo.dto.ProdutoDto;
-import br.com.foresight.modules.comercial.catalogo.dto.ProdutoRequest;
-import br.com.foresight.modules.comercial.catalogo.service.ProdutoService;
+import br.com.foresight.modules.comercial.produto.dto.ProdutoDto;
+import br.com.foresight.modules.comercial.produto.dto.ProdutoRequest;
+import br.com.foresight.modules.comercial.produto.service.ProdutoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -14,7 +14,6 @@ public interface IUsuarioRepository extends JpaRepository<Usuario, Long> {
 
     boolean existsByEmail(String email);
 
-    // === SOLUÇÃO DO ERRO AQUI ===
-    // O Spring Data cria automaticamente a query: SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM Usuario u WHERE u.role = ?1
     boolean existsByRole(Role role);
+
 }

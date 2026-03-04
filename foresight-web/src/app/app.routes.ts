@@ -6,6 +6,7 @@ import { superAdminGuard } from './core/security/super-admin.guard';
 import { PublicLayoutComponent } from './layout/public/public-layout';
 import { PrivateLayoutComponent } from './layout/private/private-layout';
 import { SuperAdminLayoutComponent } from './layout/super-admin/super-admin-layout';
+import {InteligenciaPrecoComponent} from './features/produtos/pages/analise/inteligencia-preco';
 
 export const routes: Routes = [
   // Redirecionamento inicial absoluto
@@ -101,7 +102,7 @@ export const routes: Routes = [
       // CORREÇÃO APLICADA AQUI: Mantendo a hierarquia se a rota base mudou
       {
         path: 'estoque/analise',
-        loadComponent: () => import('./features/produtos/pages/analise/lucratividade').then(m => m.LucratividadeComponent)
+        loadComponent: () => import('./features/produtos/pages/analise/inteligencia-preco').then(m => m.InteligenciaPrecoComponent)
       },
       {
         path: 'fluxo-caixa',

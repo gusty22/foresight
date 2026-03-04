@@ -6,8 +6,41 @@
         <h4 class="fw-bold mb-4 text-success"><i class="bi bi-cart-plus me-2"></i>Nova Venda</h4>
 
         <div class="mb-4 p-3 bg-light rounded-3">
+
           <label class="small fw-bold text-muted text-uppercase">Cliente *</label>
-          <input type="text" [(ngModel)]="cliente.nome" class="form-control mb-2" placeholder="Nome do Cliente (Obrigatório)">
+          <div class="position-relative mb-2">
+            <input type="text"
+                   [ngModel]="cliente.nome"
+                   (ngModelChange)="onBuscaClienteInput($event)"
+                   (blur)="esconderSugestoes()"
+                   autocomplete="off"
+                   class="form-control"
+                   placeholder="Nome do Cliente (Obrigatório)">
+
+            <div class="dropdown-menu show w-100 shadow border-0"
+                 *ngIf="exibirSugestoes() && (sugestoesClientes().length > 0 || buscandoClientes())"
+                 style="position: absolute; top: 100%; left: 0; z-index: 1050; max-height: 250px; overflow-y: auto;">
+
+              <div class="text-center p-3 text-muted small" *ngIf="buscandoClientes()">
+                <span class="spinner-border spinner-border-sm text-primary me-2"></span> Buscando clientes...
+              </div>
+
+              <ng-container *ngIf="!buscandoClientes()">
+                <button type="button" class="dropdown-item py-2 border-bottom"
+                        *ngFor="let c of sugestoesClientes()"
+                        (click)="selecionarClienteSugestao(c)">
+                  <div class="d-flex flex-column">
+                    <span class="fw-bold text-dark">{{ c.nome }}</span>
+                    <small class="text-muted" style="font-size: 0.75rem;">
+                      <span *ngIf="c.documento"><i class="bi bi-person-vcard me-1"></i> {{ c.documento | brFmt:'doc' }}</span>
+                      <span *ngIf="c.documento && c.telefone" class="mx-1">•</span>
+                      <span *ngIf="c.telefone"><i class="bi bi-telephone me-1"></i> {{ c.telefone | brFmt:'tel' }}</span>
+                    </small>
+                  </div>
+                </button>
+              </ng-container>
+            </div>
+          </div>
 
           <div class="row g-2">
             <div class="col-6">
@@ -43,7 +76,7 @@
         <div class="row align-items-end">
           <div class="col-4">
             <label class="small fw-bold">Qtd</label>
-            <input type="number" [(ngModel)]="quantidadeSelecionada" class="form-control text-center fw-bold" min="1">
+            <input type="number" [(ngModel)]="quantidadeSelecionada" class="form-control text-center fw-bold" min="1" placeholder="1">
           </div>
           <div class="col-8">
             <button class="btn btn-success w-100 fw-bold" (click)="adicionarAoCarrinho()" [disabled]="!produtoSelecionado">
@@ -120,7 +153,7 @@
                        [ngModel]="percentualDesconto()"
                        (ngModelChange)="atualizarDesconto($event)"
                        class="form-control border-0 text-primary fw-bold"
-                       min="0" max="100">
+                       min="0" max="100" placeholder="0">
                 <span class="input-group-text border-0 bg-white text-primary">%</span>
               </div>
             </div>
@@ -137,8 +170,8 @@
                 <span class="small text-muted">Subtotal:</span>
                 <span class="small fw-medium text-dark">{{ valorBruto() | currency:'BRL' }}</span>
               </div>
-              <div class="d-flex justify-content-between mb-2 text-danger" style="width: 220px;" *ngIf="percentualDesconto() > 0">
-                <span class="small">Desconto ({{ percentualDesconto() }}%):</span>
+              <div class="d-flex justify-content-between mb-2 text-danger" style="width: 220px;" *ngIf="(percentualDesconto() || 0) > 0">
+                <span class="small">Desconto ({{ percentualDesconto() || 0 }}%):</span>
                 <span class="small fw-bold">- {{ valorDesconto() | currency:'BRL' }}</span>
               </div>
 

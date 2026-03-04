@@ -2,8 +2,8 @@ package br.com.foresight.modules.comercial.venda.service;
 
 import br.com.foresight.core.exception.RegraNegocioException;
 import br.com.foresight.core.tenant.TenantContext;
-import br.com.foresight.modules.comercial.catalogo.entity.Produto;
-import br.com.foresight.modules.comercial.catalogo.repository.IProdutoRepository;
+import br.com.foresight.modules.comercial.produto.entity.Produto;
+import br.com.foresight.modules.comercial.produto.repository.IProdutoRepository;
 import br.com.foresight.modules.comercial.cliente.entity.Cliente;
 import br.com.foresight.modules.comercial.cliente.repository.IClienteRepository;
 import br.com.foresight.modules.comercial.venda.dto.ItemVendaDto;

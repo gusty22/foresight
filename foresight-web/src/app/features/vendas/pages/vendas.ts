@@ -1,19 +1,27 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { Subject, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, filter, catchError, tap, map } from 'rxjs/operators';
+
 import { VendaService, VendaRequest } from '../services/venda.service';
+import { ClienteService } from '../../clientes/services/cliente.service';
+import { AppFormatter, BrMaskPipe } from '../../../shared/pipes/br-mask.pipe';
 
 @Component({
   selector: 'app-vendas',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BrMaskPipe],
   templateUrl: './vendas.html',
   styleUrls: ['./vendas.scss']
 })
 export class VendasComponent implements OnInit {
   private http = inject(HttpClient);
   private vendaService = inject(VendaService);
+  private clienteService = inject(ClienteService);
+  private destroyRef = inject(DestroyRef);
 
   loading = signal(false);
   showSuccessModal = signal(false);
@@ -26,16 +34,26 @@ export class VendasComponent implements OnInit {
   statusPagamento = 'PAGO';
   dataPrevisao: string = '';
 
-  // 1️⃣ CORREÇÃO: Transformado em Signal para reatividade em tempo real
-  percentualDesconto = signal<number>(0);
+  percentualDesconto = signal<number | null>(null);
 
   produtosDisponiveis = signal<any[]>([]);
   produtoSelecionado: any = null;
-  quantidadeSelecionada: number = 1;
+
+  quantidadeSelecionada: number | null = null;
   termoBuscaProduto = '';
+
+  // --- ESTADOS DO AUTOCOMPLETE DE CLIENTES ---
+  termoBuscaCliente = new Subject<string>();
+  sugestoesClientes = signal<any[]>([]);
+  buscandoClientes = signal(false);
+  exibirSugestoes = signal(false);
+
+  // Cache inteligente para evitar consultas desnecessárias no banco
+  ultimoTermoSemResultado = signal<string | null>(null);
 
   ngOnInit(): void {
     this.carregarProdutos();
+    this.configurarBuscaClientesAutocomplete();
   }
 
   carregarProdutos(): void {
@@ -45,7 +63,86 @@ export class VendasComponent implements OnInit {
     });
   }
 
-  // --- MÁSCARAS ---
+  // ==========================================
+  // LÓGICA DE AUTOCOMPLETE (RXJS AVANÇADO)
+  // ==========================================
+  private configurarBuscaClientesAutocomplete(): void {
+    this.termoBuscaCliente.pipe(
+      debounceTime(500), // Aguarda meio segundo após a digitação parar
+      map(termo => termo.trim().toLowerCase()), // Força Case Insensitive e remove espaços extras
+      distinctUntilChanged(), // Só dispara se a palavra realmente mudou
+      filter(termo => {
+        // Bloqueia buscas curtas demais
+        if (termo.length < 3) {
+          this.sugestoesClientes.set([]);
+          this.exibirSugestoes.set(false);
+          this.ultimoTermoSemResultado.set(null); // Reseta a memória de falhas
+          this.buscandoClientes.set(false);
+          return false;
+        }
+
+        // INTELIGÊNCIA: Se "car" não retornou nada antes, "carlos" também não vai retornar.
+        // Bloqueia a requisição no front-end para salvar processamento do backend.
+        const termoMorto = this.ultimoTermoSemResultado();
+        if (termoMorto && termo.startsWith(termoMorto)) {
+          this.sugestoesClientes.set([]);
+          this.exibirSugestoes.set(false);
+          this.buscandoClientes.set(false);
+          return false;
+        }
+
+        return true;
+      }),
+      tap(() => {
+        // Só exibe "buscando..." se realmente passou pelos filtros e vai chamar a API
+        this.buscandoClientes.set(true);
+        this.exibirSugestoes.set(true);
+      }),
+      switchMap(termo => {
+        // switchMap cancela automaticamente a busca anterior se o usuário voltar a digitar
+        return this.clienteService.buscarPorTermo(termo).pipe(
+          map(res => ({ termo, clientes: res.data || [] })),
+          catchError(() => of({ termo, clientes: [] })) // Fallback silencioso
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef) // Evita memory leak ao sair da tela
+    ).subscribe({
+      next: ({ termo, clientes }) => {
+        this.buscandoClientes.set(false);
+        this.sugestoesClientes.set(clientes);
+
+        if (clientes.length === 0) {
+          // Oculta sugestões e salva o termo na memória para bloquear as próximas letras
+          this.exibirSugestoes.set(false);
+          this.ultimoTermoSemResultado.set(termo);
+        } else {
+          // Exibe os clientes e limpa a memória de falhas
+          this.exibirSugestoes.set(true);
+          this.ultimoTermoSemResultado.set(null);
+        }
+      }
+    });
+  }
+
+  onBuscaClienteInput(termo: string): void {
+    this.cliente.nome = termo;
+    this.termoBuscaCliente.next(termo);
+  }
+
+  selecionarClienteSugestao(clienteSelecionado: any): void {
+    this.cliente.nome = clienteSelecionado.nome;
+    this.cliente.documento = AppFormatter.documento(clienteSelecionado.documento);
+    this.cliente.telefone = AppFormatter.telefone(clienteSelecionado.telefone);
+
+    this.sugestoesClientes.set([]);
+    this.exibirSugestoes.set(false);
+  }
+
+  esconderSugestoes(): void {
+    setTimeout(() => this.exibirSugestoes.set(false), 200);
+  }
+  // ==========================================
+
   formatarTelefone(event: Event): void {
     const input = event.target as HTMLInputElement;
     let v = input.value.replace(/\D/g, "");
@@ -69,7 +166,6 @@ export class VendasComponent implements OnInit {
     input.value = v;
   }
 
-  // --- LÓGICA DE CARRINHO ---
   produtosFiltrados = computed(() => {
     const termo = this.termoBuscaProduto.toLowerCase();
     return this.produtosDisponiveis().filter(p => p.nome.toLowerCase().includes(termo));
@@ -77,12 +173,15 @@ export class VendasComponent implements OnInit {
 
   selecionarProduto(produto: any): void {
     this.produtoSelecionado = produto;
-    this.quantidadeSelecionada = 1;
+    this.quantidadeSelecionada = null;
   }
 
   adicionarAoCarrinho(): void {
     if (!this.produtoSelecionado) return;
-    if (this.quantidadeSelecionada > this.produtoSelecionado.estoqueAtual) {
+
+    const qtd = this.quantidadeSelecionada || 1;
+
+    if (qtd > this.produtoSelecionado.estoqueAtual) {
       alert(`Estoque insuficiente! Disponível: ${this.produtoSelecionado.estoqueAtual}`);
       return;
     }
@@ -91,17 +190,17 @@ export class VendasComponent implements OnInit {
     if (itemExistente) {
       this.carrinho.update(itens => itens.map(i =>
         i.id === this.produtoSelecionado.id
-          ? { ...i, quantidade: i.quantidade + this.quantidadeSelecionada, subtotal: (i.quantidade + this.quantidadeSelecionada) * i.precoVenda }
+          ? { ...i, quantidade: i.quantidade + qtd, subtotal: (i.quantidade + qtd) * i.precoVenda }
           : i
       ));
     } else {
       this.carrinho.update(itens => [
         ...itens,
-        { ...this.produtoSelecionado, quantidade: this.quantidadeSelecionada, subtotal: this.produtoSelecionado.precoVenda * this.quantidadeSelecionada }
+        { ...this.produtoSelecionado, quantidade: qtd, subtotal: this.produtoSelecionado.precoVenda * qtd }
       ]);
     }
     this.produtoSelecionado = null;
-    this.quantidadeSelecionada = 1;
+    this.quantidadeSelecionada = null;
     this.termoBuscaProduto = '';
   }
 
@@ -109,10 +208,9 @@ export class VendasComponent implements OnInit {
     this.carrinho.update(itens => itens.filter((_, i) => i !== index));
   }
 
-  // 2️⃣ CORREÇÃO: Cálculos Reativos Acoplados aos Signals e Limite de 100%
-  atualizarDesconto(valor: number): void {
-    if (valor > 100) valor = 100;
-    if (valor < 0) valor = 0;
+  atualizarDesconto(valor: number | null): void {
+    if (valor !== null && valor > 100) valor = 100;
+    if (valor !== null && valor < 0) valor = 0;
     this.percentualDesconto.set(valor);
   }
 
@@ -125,7 +223,6 @@ export class VendasComponent implements OnInit {
 
   valorLiquidoFinal = computed(() => this.valorBruto() - this.valorDesconto());
 
-  // --- FINALIZAR ---
   finalizarVenda(): void {
     if (!this.cliente.nome || this.carrinho().length === 0) {
       alert('Informe o Cliente e adicione produtos ao carrinho.');
@@ -143,7 +240,7 @@ export class VendasComponent implements OnInit {
       formaPagamento: this.formaPagamento,
       status: this.statusPagamento,
       dataPrevisao: this.dataPrevisao || undefined,
-      percentualDesconto: this.percentualDesconto() // Extrai o valor correto do Signal
+      percentualDesconto: this.percentualDesconto() || 0
     };
 
     this.vendaService.realizarVenda(payload).subscribe({
@@ -175,7 +272,9 @@ export class VendasComponent implements OnInit {
     this.cliente = { nome: '', documento: '', telefone: '' };
     this.statusPagamento = 'PAGO';
     this.formaPagamento = 'DINHEIRO';
-    this.percentualDesconto.set(0); // Zera o sinal de desconto
+    this.percentualDesconto.set(null);
+    this.quantidadeSelecionada = null;
+    this.ultimoTermoSemResultado.set(null); // Reseta a memória de buscas ao criar nova venda
     this.showSuccessModal.set(false);
     this.ultimoIdVenda = null;
   }

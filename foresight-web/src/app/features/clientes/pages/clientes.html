@@ -3,9 +3,9 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <h2 class="fw-bold text-dark m-0 ls-tight">Carteira de Clientes</h2>
-      <p class="text-muted m-0">Gerencie seus contatos PF e PJ.</p>
+      <p class="text-muted m-0">Gerencie contatos e dados de faturamento.</p>
     </div>
-    <button class="btn btn-dark fw-bold shadow-sm" (click)="novoCliente()">
+    <button class="btn btn-dark fw-bold shadow-sm" (click)="abrirModalNovo()">
       <i class="bi bi-person-plus-fill me-2"></i> Novo Cliente
     </button>
   </div>
@@ -15,14 +15,17 @@
       <div class="input-group">
         <span class="input-group-text bg-white border-0 ps-3"><i class="bi bi-search text-muted"></i></span>
         <input type="text" class="form-control border-0 shadow-none"
-               placeholder="Buscar por nome, CPF ou CNPJ..."
-               [(ngModel)]="termoBusca" (keyup.enter)="filtrarClientes()">
-        <button class="btn btn-light fw-bold px-4 rounded-3 m-1" (click)="filtrarClientes()">Buscar</button>
+               placeholder="Buscar por nome, CPF, CNPJ ou telefone..."
+               (input)="termoBusca.set($any($event.target).value)">
       </div>
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+  <div *ngIf="loading()" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden" *ngIf="!loading()">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead class="bg-light text-muted small text-uppercase">
@@ -35,26 +38,29 @@
         </tr>
         </thead>
         <tbody>
-        <tr *ngFor="let c of clientes()">
+        <tr *ngFor="let c of clientesFiltrados()">
           <td class="ps-4">
             <div class="d-flex align-items-center gap-3">
-              <div class="avatar-circle bg-dark text-white fw-bold">
+              <div class="avatar-circle bg-dark text-white fw-bold text-uppercase">
                 {{ c.nome.charAt(0) }}
               </div>
               <div>
                 <div class="fw-bold text-dark">{{ c.nome }}</div>
-                <div class="text-muted extra-small">{{ c.documento }} <span class="badge bg-light text-secondary border ms-1">{{ c.tipoCliente || 'PF' }}</span></div>
+                <div class="text-muted extra-small">
+                  {{ c.documento || 'Sem doc.' }}
+                  <span class="badge bg-light text-secondary border ms-1">{{ c.tipoCliente || 'PF' }}</span>
+                </div>
               </div>
             </div>
           </td>
           <td>
             <div class="d-flex flex-column">
-              <span class="small"><i class="bi bi-telephone me-1 text-muted"></i> {{ c.telefone }}</span>
-              <span class="extra-small text-muted text-truncate" style="max-width: 150px;">{{ c.email }}</span>
+              <span class="small"><i class="bi bi-telephone me-1 text-muted"></i> {{ c.telefone || 'Não info.' }}</span>
+              <span class="extra-small text-muted text-truncate" style="max-width: 150px;">{{ c.email || '---' }}</span>
             </div>
           </td>
           <td>
-            <span class="small text-dark">{{ c.cidade }} / {{ c.estado }}</span>
+            <span class="small text-dark">{{ c.cidade || '--' }} {{ c.estado ? '/ ' + c.estado : '' }}</span>
           </td>
           <td>
               <span class="badge rounded-pill"
@@ -63,21 +69,103 @@
               </span>
           </td>
           <td class="text-end pe-4">
-            <button class="btn btn-sm btn-white border shadow-sm me-1"><i class="bi bi-pencil"></i></button>
-            <button class="btn btn-sm btn-white border shadow-sm text-danger"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-sm btn-light border text-primary shadow-sm me-2" (click)="abrirModalEdicao(c)">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-light border text-danger shadow-sm" (click)="excluirCliente(c.id)">
+              <i class="bi bi-trash"></i>
+            </button>
           </td>
         </tr>
 
-        <tr *ngIf="clientes().length === 0 && !loading()">
+        <tr *ngIf="clientesFiltrados().length === 0">
           <td colspan="5" class="text-center py-5">
             <div class="py-4">
               <i class="bi bi-people fs-1 text-muted opacity-25"></i>
-              <p class="text-muted mt-2 fw-medium">Nenhum cliente encontrado.</p>
+              <p class="text-muted mt-2 fw-medium">Nenhum cliente encontrado na sua base.</p>
             </div>
           </td>
         </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop fade show" *ngIf="exibirModal()"></div>
+<div class="modal fade show d-block" *ngIf="exibirModal()" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+
+      <div class="modal-header bg-light border-0 p-4">
+        <h5 class="fw-bold m-0 text-dark">
+          <i class="bi bi-person-lines-fill me-2 text-primary"></i>
+          {{ clienteEmEdicaoId ? 'Editar Cliente' : 'Novo Cliente' }}
+        </h5>
+        <button type="button" class="btn-close shadow-none" (click)="fecharModal()" [disabled]="salvando()"></button>
+      </div>
+
+      <form [formGroup]="clienteForm" (ngSubmit)="salvarCliente()">
+        <div class="modal-body p-4">
+
+          <h6 class="fw-bold text-muted small text-uppercase mb-3 border-bottom pb-2">Informações Principais</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-8">
+              <label class="form-label small fw-bold">Nome Completo / Razão Social *</label>
+              <input type="text" formControlName="nome" class="form-control" [ngClass]="{'is-invalid': f['nome'].invalid && f['nome'].touched}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Tipo</label>
+              <select formControlName="tipoCliente" class="form-select">
+                <option value="PF">Pessoa Física (PF)</option>
+                <option value="PJ">Pessoa Jurídica (PJ)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">CPF / CNPJ</label>
+              <input type="text" formControlName="documento" class="form-control" (input)="formatarDocumento($event)" placeholder="Somente números">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Telefone / WhatsApp</label>
+              <input type="text" formControlName="telefone" class="form-control" (input)="formatarTelefone($event)" placeholder="(00) 00000-0000">
+            </div>
+            <div class="col-md-12">
+              <label class="form-label small fw-bold">E-mail</label>
+              <input type="email" formControlName="email" class="form-control" placeholder="contato@email.com">
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-muted small text-uppercase mb-3 border-bottom pb-2">Endereço & Gestão</h6>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Cidade</label>
+              <input type="text" formControlName="cidade" class="form-control">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold">UF</label>
+              <input type="text" formControlName="estado" class="form-control" maxlength="2" placeholder="Ex: SP">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Status do Cliente</label>
+              <select formControlName="statusCliente" class="form-select">
+                <option value="ATIVO">Ativo</option>
+                <option value="INATIVO">Inativo</option>
+                <option value="INADIMPLENTE">Inadimplente</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer border-0 p-4 bg-light">
+          <button type="button" class="btn btn-outline-secondary fw-bold px-4" (click)="fecharModal()" [disabled]="salvando()">Cancelar</button>
+          <button type="submit" class="btn btn-dark fw-bold px-5" [disabled]="clienteForm.invalid || salvando()">
+            <span *ngIf="salvando()" class="spinner-border spinner-border-sm me-2"></span>
+            Salvar
+          </button>
+        </div>
+      </form>
+
     </div>
   </div>
 </div>

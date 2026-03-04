@@ -1,0 +1,123 @@
+<div class="auditoria-container p-4 p-md-5 bg-page min-vh-100">
+
+  <div class="page-header mb-5 d-flex justify-content-between align-items-end">
+    <div class="header-left d-flex align-items-center gap-4">
+      <div class="icon-wrapper bg-dark text-white rounded-4 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 2rem;">
+        <i class="bi bi-shield-check"></i>
+      </div>
+      <div>
+        <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary mb-2 px-3 py-1 rounded-pill fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">SISTEMA GLOBAL</span>
+        <h1 class="page-title fw-bolder text-dark m-0 tracking-tight">Logs de Auditoria</h1>
+        <p class="text-muted m-0 small">Rastreabilidade imutável de ações críticas de usuários e sistema.</p>
+      </div>
+    </div>
+
+    <button class="btn btn-outline-dark fw-bold shadow-sm" (click)="carregarLogs()">
+      <i class="bi bi-arrow-clockwise me-2"></i> Atualizar
+    </button>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+    <div class="card-body p-4 bg-white" [formGroup]="filtroForm">
+      <h6 class="fw-bold text-dark mb-3 text-uppercase small"><i class="bi bi-funnel me-2 text-muted"></i>Filtros de Investigação</h6>
+
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="small fw-bold text-muted mb-1">Buscar Termo / E-mail</label>
+          <input type="text" formControlName="termo" class="form-control bg-light border-0" placeholder="E-mail, ID ou Detalhes...">
+        </div>
+
+        <div class="col-md-3">
+          <label class="small fw-bold text-muted mb-1">Ação Realizada</label>
+          <select formControlName="acao" class="form-select bg-light border-0">
+            <option value="TODAS">Qualquer Ação</option>
+            <option *ngFor="let a of acoesDisponiveis" [value]="a">{{ a }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="small fw-bold text-muted mb-1">Data Inicial</label>
+          <input type="date" formControlName="dataInicio" class="form-control bg-light border-0">
+        </div>
+
+        <div class="col-md-2">
+          <label class="small fw-bold text-muted mb-1">Data Final</label>
+          <input type="date" formControlName="dataFim" class="form-control bg-light border-0">
+        </div>
+
+        <div class="col-md-1 d-flex align-items-end">
+          <button type="button" class="btn btn-light w-100 text-danger border fw-bold" (click)="limparFiltros()" title="Limpar Filtros">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+      <span class="text-muted small fw-bold"><i class="bi bi-list-ul me-2"></i> {{ totalElementos() }} registros imutáveis encontrados</span>
+    </div>
+
+    <div *ngIf="loading()" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="text-muted small mt-3 fw-bold">Consultando Data Center...</p>
+    </div>
+
+    <div class="table-responsive" *ngIf="!loading()">
+      <table class="table table-hover align-middle mb-0 table-fintech">
+        <thead class="bg-light text-muted small text-uppercase">
+        <tr>
+          <th class="ps-4">Data / Hora</th>
+          <th>Usuário (E-mail)</th>
+          <th>Tenant (Empresa)</th>
+          <th>Ação Registrada</th>
+          <th>Detalhes Técnicos</th>
+          <th class="pe-4 text-end">Endereço IP</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngFor="let log of logs()">
+          <td class="ps-4 text-dark fw-bold small">{{ log.dataHora | brFmt:'dataHora' }}</td>
+          <td>
+            <div class="d-flex align-items-center">
+              <i class="bi bi-person-circle text-muted me-2 fs-5"></i>
+              <span class="fw-medium text-dark">{{ log.usuarioEmail }}</span>
+            </div>
+          </td>
+          <td>
+              <span class="badge bg-secondary bg-opacity-10 text-secondary border px-2 py-1">
+                {{ log.empresaId ? 'ID #' + log.empresaId : 'GLOBAL' }}
+              </span>
+          </td>
+          <td>
+            <span class="badge bg-dark rounded-pill px-2 py-1">{{ log.acao }}</span>
+          </td>
+          <td style="max-width: 300px;">
+            <p class="m-0 small text-muted text-truncate" [title]="log.detalhes">{{ log.detalhes }}</p>
+          </td>
+          <td class="pe-4 text-end font-monospace small text-muted">
+            {{ log.ipAddress }}
+          </td>
+        </tr>
+
+        <tr *ngIf="logs().length === 0">
+          <td colspan="6" class="text-center py-5">
+            <i class="bi bi-shield-slash display-4 text-muted opacity-25 d-block mb-3"></i>
+            <h6 class="text-muted fw-bold m-0">Nenhum evento de auditoria encontrado.</h6>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-footer bg-white border-top p-3 d-flex justify-content-between align-items-center" *ngIf="totalElementos() > itensPorPagina">
+      <span class="small text-muted fw-bold">Página {{ paginaAtual() + 1 }} de {{ (totalElementos() / itensPorPagina) | number:'1.0-0' }}</span>
+      <div class="btn-group">
+        <button class="btn btn-sm btn-outline-secondary fw-bold" [disabled]="paginaAtual() === 0" (click)="mudarPagina(paginaAtual() - 1)">Anterior</button>
+        <button class="btn btn-sm btn-outline-secondary fw-bold" [disabled]="(paginaAtual() + 1) * itensPorPagina >= totalElementos()" (click)="mudarPagina(paginaAtual() + 1)">Próxima</button>
+      </div>
+    </div>
+  </div>
+
+</div>

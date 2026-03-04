@@ -1,6 +1,6 @@
-package br.com.foresight.modules.comercial.catalogo.repository;
+package br.com.foresight.modules.comercial.produto.repository;
 
-import br.com.foresight.modules.comercial.catalogo.entity.Produto;
+import br.com.foresight.modules.comercial.produto.entity.Produto;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -11,5 +11,6 @@ import java.util.Optional;
 public interface IProdutoRepository extends JpaRepository<Produto, Long> {
     // Defesa em profundidade: Exigimos o ID da empresa mesmo com o Hibernate Filter ligado.
     List<Produto> findAllByEmpresaId(Long empresaId);
+
     Optional<Produto> findByIdAndEmpresaId(Long id, Long empresaId);
 }

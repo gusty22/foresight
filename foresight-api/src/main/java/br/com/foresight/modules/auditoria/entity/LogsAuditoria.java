@@ -17,9 +17,8 @@ public class LogsAuditoria {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Identificação FLAT do Tenant (Sem JOIN para garantir Insert de ultra-alta performance)
-    @Column(name = "empresa_id", nullable = false, updatable = false)
-    private Long empresaId;
+    @Column(name = "empresa_id", updatable = false)
+    private Long empresaId; // Pode ser nulo em ações globais do Super Admin
 
     @Column(nullable = false, length = 150, updatable = false)
     private String entidadeNome;
@@ -28,7 +27,7 @@ public class LogsAuditoria {
     private Long entidadeId;
 
     @Column(nullable = false, length = 50, updatable = false)
-    private String acao; // CRIACAO, EDICAO, DELECAO, ESTORNO
+    private String acao;
 
     @Column(columnDefinition = "TEXT", updatable = false)
     private String detalhes;

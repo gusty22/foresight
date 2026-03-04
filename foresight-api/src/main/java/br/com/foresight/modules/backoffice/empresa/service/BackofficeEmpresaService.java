@@ -4,33 +4,37 @@ import br.com.foresight.core.exception.RegraNegocioException;
 import br.com.foresight.modules.backoffice.empresa.dto.AlterarStatusEmpresaRequest;
 import br.com.foresight.modules.backoffice.empresa.dto.EmpresaGlobalDto;
 import br.com.foresight.modules.identity.empresa.entity.Empresa;
+import br.com.foresight.modules.identity.empresa.enums.StatusEmpresa;
 import br.com.foresight.modules.identity.empresa.repository.IEmpresaRepository;
+import br.com.foresight.modules.identity.usuario.repository.IUsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BackofficeEmpresaService {
 
     private final IEmpresaRepository empresaRepository;
+    private final IUsuarioRepository usuarioRepository;
 
     @Transactional(readOnly = true)
-    public List<EmpresaGlobalDto> listarTodasEmpresas() {
-        List<Empresa> empresas = empresaRepository.findAll();
+    public Page<EmpresaGlobalDto> listarEmpresasPaginado(String termo, Pageable pageable) {
+        Page<Empresa> pagina;
 
-        return empresas.stream()
-                .map(e -> new EmpresaGlobalDto(
-                        e.getId(),
-                        e.getNome(), // Ajustado de razaoSocial para nome conforme sua entidade Empresa
-                        e.getCnpj(),
-                        e.getStatus(),
-                        e.getCriadoEm() // Assumindo que getCriadoEm() já devolve um LocalDateTime do BaseAuditEntity
-                ))
-                .collect(Collectors.toList());
+        if (termo != null && !termo.isBlank()) {
+            pagina = empresaRepository.buscarPorTermoPaginado(termo.toLowerCase(), pageable);
+        } else {
+            pagina = empresaRepository.findAll(pageable);
+        }
+
+        return pagina.map(this::converterParaDto);
     }
 
     @Transactional
@@ -38,20 +42,47 @@ public class BackofficeEmpresaService {
         Empresa empresa = empresaRepository.findById(empresaId)
                 .orElseThrow(() -> new RegraNegocioException("Empresa não encontrada na base global."));
 
-        // Proteção Nível Deus: Evita auto-bloqueio do Super Admin
-        if (empresa.getId().equals(1L) && request.novoStatus() != br.com.foresight.modules.identity.empresa.enums.StatusEmpresa.ATIVA) {
-            throw new RegraNegocioException("Ação Negada: A empresa administradora não pode ser bloqueada.");
+        if (empresa.getId().equals(1L) && request.novoStatus() != StatusEmpresa.ATIVA) {
+            log.warn("Tentativa de bloqueio da Empresa Master (ID 1) interceptada e negada.");
+            throw new RegraNegocioException("Ação Negada: A empresa administradora master não pode ser suspensa.");
         }
 
+        StatusEmpresa statusAntigo = empresa.getStatus();
         empresa.setStatus(request.novoStatus());
         empresaRepository.save(empresa);
 
+        // LOG DE AUDITORIA OBRIGATÓRIO EM SISTEMAS FINANCEIROS
+        log.warn("AUDITORIA: Status da empresa '{}' (ID {}) alterado de {} para {}. Motivo: {}",
+                empresa.getNome(), empresa.getId(), statusAntigo, request.novoStatus(), request.motivo());
+
+        return converterParaDto(empresa);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, String> gerarTokenImpersonation(Long empresaId) {
+        Empresa empresa = empresaRepository.findById(empresaId)
+                .orElseThrow(() -> new RegraNegocioException("Empresa não encontrada."));
+
+        log.warn("AUDITORIA SEVERA: Um Super Admin solicitou acesso de suporte (Impersonation) para a empresa '{}' (ID {}).",
+                empresa.getNome(), empresa.getId());
+
+        // MOCK: Em produção, aqui você emitiria um JWT com Role de ADMIN atrelado a este TenantId
+        return Map.of("token", "mock-jwt-impersonation-token-for-tenant-" + empresaId);
+    }
+
+    private EmpresaGlobalDto converterParaDto(Empresa e) {
+        // Como o modelo atual é 1:1 (Empresa pertence a um Usuário Dono),
+        // e não "Usuários pertencem a uma empresa", assumimos 1 ativo.
+        long usuariosAtivos = 1L;
+
         return new EmpresaGlobalDto(
-                empresa.getId(),
-                empresa.getNome(),
-                empresa.getCnpj(),
-                empresa.getStatus(),
-                empresa.getCriadoEm()
+                e.getId(),
+                e.getNome(),
+                e.getCnpj(),
+                e.getStatus(),
+                "PRO", // Mock
+                e.getCriadoEm(),
+                usuariosAtivos
         );
     }
 }

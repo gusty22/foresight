@@ -1,6 +1,6 @@
-package br.com.foresight.modules.comercial.catalogo.service;
+package br.com.foresight.modules.comercial.produto.service;
 
-import br.com.foresight.modules.comercial.catalogo.dto.SimulacaoPrecoDto;
+import br.com.foresight.modules.comercial.produto.dto.SimulacaoPrecoDto;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;

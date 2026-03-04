@@ -1,4 +1,4 @@
-package br.com.foresight.modules.comercial.catalogo.dto;
+package br.com.foresight.modules.comercial.produto.dto;
 
 import java.math.BigDecimal;
 

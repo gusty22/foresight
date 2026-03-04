@@ -1,4 +1,4 @@
-package br.com.foresight.modules.comercial.catalogo.entity;
+package br.com.foresight.modules.comercial.produto.entity;
 
 import br.com.foresight.core.domain.BaseTenantEntity;
 import jakarta.persistence.Column;

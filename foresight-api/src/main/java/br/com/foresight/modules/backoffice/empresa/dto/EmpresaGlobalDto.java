@@ -8,5 +8,7 @@ public record EmpresaGlobalDto(
         String razaoSocial,
         String cnpj,
         StatusEmpresa status,
-        LocalDateTime dataCadastro
+        String plano, // Novo campo para o Front-end
+        LocalDateTime dataCadastro,
+        long usuariosAtivos // Novo campo para o Front-end
 ) {}

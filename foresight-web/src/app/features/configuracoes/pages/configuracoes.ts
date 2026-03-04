@@ -30,9 +30,10 @@ export class ConfiguracoesComponent implements OnInit {
 
   empresaForm: FormGroup = this.fb.group({
     nome: ['', Validators.required],
-    cnpj: [{ value: '', disabled: true }], // CNPJ é imutável
+    cnpj: [{ value: '', disabled: true }],
     endereco: [''],
-    proLaboreDesejado: [0],
+    // Iniciado como nulo para que o placeholder do HTML aja
+    proLaboreDesejado: [null],
     tipo: [{ value: 'SERVICO', disabled: true }]
   });
 
@@ -53,20 +54,19 @@ export class ConfiguracoesComponent implements OnInit {
         const dados = res.data ? res.data : res;
         this.perfilAtual.set(dados);
 
-        // Preenche Perfil (Formatando telefone vindo do banco)
         this.perfilForm.patchValue({
           nome: dados.nome || '',
           email: dados.email || '',
           telefone: this.aplicarMascaraTelefoneString(dados.telefone || '')
         });
 
-        // Preenche Empresa (Formatando CNPJ vindo do banco)
         if (dados.empresa) {
           this.empresaForm.patchValue({
             nome: dados.empresa.nome || '',
             cnpj: this.aplicarMascaraCNPJString(dados.empresa.cnpj || ''),
             endereco: dados.empresa.endereco || '',
-            proLaboreDesejado: dados.empresa.proLaboreDesejado || 0,
+            // Se vier 0 do banco, a gente deixa nulo para o form ficar limpo
+            proLaboreDesejado: dados.empresa.proLaboreDesejado || null,
             tipo: dados.empresa.tipo || 'SERVICO'
           });
         }
@@ -78,9 +78,6 @@ export class ConfiguracoesComponent implements OnInit {
       }
     });
   }
-
-  // --- MÁSCARAS DE INTERAÇÃO (Eventos de Input) ---
-  // Padronizado com o VendasComponent
 
   formatarTelefone(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -94,8 +91,6 @@ export class ConfiguracoesComponent implements OnInit {
     input.value = v;
     this.perfilForm.get('telefone')?.setValue(v, { emitEvent: false });
   }
-
-  // --- MÉTODOS AUXILIARES DE FORMATAÇÃO (Strings estáticas) ---
 
   private aplicarMascaraTelefoneString(v: string): string {
     v = v.replace(/\D/g, "");
@@ -113,8 +108,6 @@ export class ConfiguracoesComponent implements OnInit {
     return v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
   }
 
-  // --- AÇÕES ---
-
   mudarAba(aba: 'perfil' | 'empresa' | 'seguranca') {
     this.abaAtiva.set(aba);
     this.mensagemSucesso.set(null);
@@ -127,7 +120,6 @@ export class ConfiguracoesComponent implements OnInit {
 
     const payload = {
       nome: this.perfilForm.value.nome,
-      // Sanitização: Remove a máscara antes de enviar
       telefone: this.perfilForm.value.telefone.replace(/\D/g, '')
     };
 
@@ -138,8 +130,6 @@ export class ConfiguracoesComponent implements OnInit {
   }
 
   salvarEmpresa() {
-    // Aqui seria a chamada ao service de empresa
-    // Por enquanto simulamos o sucesso
     this.salvando.set(true);
     setTimeout(() => this.exibirSucesso('Dados organizacionais atualizados!'), 1000);
   }
@@ -147,7 +137,6 @@ export class ConfiguracoesComponent implements OnInit {
   alterarSenha() {
     if (this.senhaForm.invalid) return;
     this.salvando.set(true);
-    // Simulação segura
     setTimeout(() => {
       this.senhaForm.reset();
       this.exibirSucesso('Senha atualizada com segurança.');

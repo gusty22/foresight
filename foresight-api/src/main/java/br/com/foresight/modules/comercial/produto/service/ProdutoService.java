@@ -1,11 +1,11 @@
-package br.com.foresight.modules.comercial.catalogo.service;
+package br.com.foresight.modules.comercial.produto.service;
 
 import br.com.foresight.core.exception.RegraNegocioException;
 import br.com.foresight.core.tenant.TenantContext;
-import br.com.foresight.modules.comercial.catalogo.dto.ProdutoDto;
-import br.com.foresight.modules.comercial.catalogo.dto.ProdutoRequest;
-import br.com.foresight.modules.comercial.catalogo.entity.Produto;
-import br.com.foresight.modules.comercial.catalogo.repository.IProdutoRepository;
+import br.com.foresight.modules.comercial.produto.dto.ProdutoDto;
+import br.com.foresight.modules.comercial.produto.dto.ProdutoRequest;
+import br.com.foresight.modules.comercial.produto.entity.Produto;
+import br.com.foresight.modules.comercial.produto.repository.IProdutoRepository;
 import br.com.foresight.modules.identity.empresa.entity.Empresa;
 import br.com.foresight.modules.identity.empresa.repository.IEmpresaRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,9 +47,11 @@ public class ProdutoService {
 
         Produto produto = Produto.builder()
                 .nome(dados.nome())
+                .categoria(dados.categoria())
                 .precoCusto(dados.precoCusto())
                 .precoVenda(dados.precoVenda())
                 .estoqueAtual(dados.estoqueAtual() != null ? dados.estoqueAtual() : 0)
+                .estoqueMinimo(dados.estoqueMinimo() != null ? dados.estoqueMinimo() : 5)
                 .build();
 
         produto.setEmpresa(empresa);
@@ -59,6 +61,7 @@ public class ProdutoService {
 
     @Transactional(readOnly = true)
     public List<ProdutoDto> listar() {
+        // A listagem retorna todos do tenant; o Front-end lida com a filtragem avançada visualmente.
         return produtoRepository.findAllByEmpresaId(getTenantIdSeguro()).stream()
                 .map(this::converterParaDto)
                 .collect(Collectors.toList());
@@ -75,9 +78,11 @@ public class ProdutoService {
         Produto produto = buscarProdutoDaEmpresa(id, getTenantIdSeguro());
 
         produto.setNome(dados.nome());
+        produto.setCategoria(dados.categoria());
         produto.setPrecoCusto(dados.precoCusto());
         produto.setPrecoVenda(dados.precoVenda());
         produto.setEstoqueAtual(dados.estoqueAtual() != null ? dados.estoqueAtual() : 0);
+        produto.setEstoqueMinimo(dados.estoqueMinimo() != null ? dados.estoqueMinimo() : 5);
 
         return converterParaDto(produtoRepository.save(produto));
     }
@@ -91,14 +96,23 @@ public class ProdutoService {
     private ProdutoDto converterParaDto(Produto p) {
         BigDecimal margem = p.calcularMargem();
         BigDecimal lucro = p.getLucroUnidade();
-        String alerta = margem.compareTo(BigDecimal.ZERO) < 0 ? "PREJUIZO" : "OK";
+
+        // Define o status de alerta com base na margem e também na quantidade de estoque vs mínimo
+        String alerta = "OK";
+        if (margem.compareTo(BigDecimal.ZERO) < 0) {
+            alerta = "PREJUIZO";
+        } else if (p.getEstoqueAtual() <= (p.getEstoqueMinimo() != null ? p.getEstoqueMinimo() : 5)) {
+            alerta = "CRITICO";
+        }
 
         return new ProdutoDto(
                 p.getId(),
                 p.getNome(),
+                p.getCategoria(),
                 p.getPrecoCusto(),
                 p.getPrecoVenda(),
                 p.getEstoqueAtual(),
+                p.getEstoqueMinimo(),
                 margem,
                 lucro,
                 alerta

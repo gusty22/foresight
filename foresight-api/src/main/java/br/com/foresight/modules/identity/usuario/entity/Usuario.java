@@ -34,7 +34,7 @@ public class Usuario extends BaseAuditEntity implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private Role role; // NOVA COLUNA
+    private Role role;
 
     @Version
     private Long version;
@@ -42,13 +42,12 @@ public class Usuario extends BaseAuditEntity implements UserDetails {
     @PrePersist
     public void prePersist() {
         if (this.role == null) {
-            this.role = Role.ROLE_TENANT_ADMIN; // Seguro por padrão
+            this.role = Role.ROLE_TENANT_ADMIN;
         }
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Agora o Spring Security sabe exatamente quem é o usuário
         return List.of(new SimpleGrantedAuthority(this.role.name()));
     }
 

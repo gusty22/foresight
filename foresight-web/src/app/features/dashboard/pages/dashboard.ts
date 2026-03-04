@@ -30,9 +30,6 @@ export class DashboardComponent implements OnInit {
 
     this.dashboardService.obterResumo().subscribe({
       next: (res) => {
-        // CORREÇÃO: Removemos o fallback ": res".
-        // O signal espera estritamente um DashboardResumo.
-        // O objeto 'res' é um ApiResponse (wrapper), logo não pode ser atribuído aqui.
         this.resumo.set(res.data);
         this.loading.set(false);
       },

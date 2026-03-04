@@ -3,32 +3,21 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiResponse } from '../../../core/http/api-response.model';
 
-// DTOs embutidos para garantir a tipagem estrita e evitar o erro "any"
-export interface ProdutoRequest {
-  nome: string;
-  precoCusto: number;
-  precoVenda: number;
-  estoqueAtual: number;
-}
-
-export interface ProdutoDto extends ProdutoRequest {
-  id: number;
-  lucroReal: number;
-  margemReal: number;
-  alertaStatus: string;
-}
+// ARQUITETURA ENTERPRISE: Única Fonte da Verdade.
+// Importamos o DTO isolado e não recriamos as interfaces aqui dentro.
+import { ProdutoDto, ProdutoRequest } from '../models/produto.dto';
 
 @Injectable({ providedIn: 'root' })
 export class ProdutoService {
   private http = inject(HttpClient);
 
-  // Rotas Base Isoladas
+  // Rota Cega (Anti-IDOR e Multi-Tenant seguro)
+  // O ID da empresa NUNCA trafega na URL. O backend extrai do JWT (Bearer Token).
   private readonly API = 'http://localhost:8080/api/produtos';
   private readonly RELATORIOS_API = 'http://localhost:8080/api/relatorios';
 
   // ==========================================
-  // CRUD DE PRODUTOS (Padrão REST Seguro)
-  // O backend valida se o 'id' do produto pertence ao Tenant logado.
+  // CRUD DE PRODUTOS
   // ==========================================
 
   criar(produto: ProdutoRequest): Observable<ApiResponse<ProdutoDto>> {
@@ -52,17 +41,14 @@ export class ProdutoService {
   }
 
   // ==========================================
-  // ANÁLISE E RELATÓRIOS (Sem IDOR)
-  // O Token JWT garante o isolamento por empresa.
+  // ANÁLISE E RELATÓRIOS
   // ==========================================
 
   obterLucratividade(): Observable<ApiResponse<any>> {
-    // Rota limpa, sem anexar o ID da empresa no final
     return this.http.get<ApiResponse<any>>(`${this.RELATORIOS_API}/lucratividade`);
   }
 
   obterSaudeFinanceira(): Observable<ApiResponse<any>> {
-    // Rota limpa, sem anexar o ID da empresa no final
     return this.http.get<ApiResponse<any>>(`${this.RELATORIOS_API}/saude-financeira`);
   }
 }
