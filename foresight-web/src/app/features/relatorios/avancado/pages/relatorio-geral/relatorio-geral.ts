@@ -5,12 +5,12 @@ import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { RelatorioAvancadoService } from '../../services/relatorio-avancado.service';
 import { FiltroRelatorio, TransacaoRelatorio } from '../../models/relatorio-avancado.model';
-import { BrMaskPipe } from '../../../../../shared/pipes/br-mask.pipe'; // Importa o Pipe
+import { BrMaskPipe } from '../../../../../shared/pipes/br-mask.pipe';
 
 @Component({
   selector: 'app-relatorio-geral',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, BrMaskPipe], // Adiciona aos imports
+  imports: [CommonModule, ReactiveFormsModule, BrMaskPipe],
   templateUrl: './relatorio-geral.html',
   styleUrls: ['./relatorio-geral.scss']
 })
@@ -28,8 +28,6 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   tamanhoPagina = signal<number>(10);
   ordenarPor = signal<string>('dataHora');
   direcaoOrdem = signal<'asc' | 'desc'>('desc');
-
-  // Multi-Step / Context Filter
   tipoRelatorioSelecionado = signal<'FLUXO' | 'VENDAS' | 'DESPESAS'>('FLUXO');
 
   filtrosForm: FormGroup = this.fb.group({

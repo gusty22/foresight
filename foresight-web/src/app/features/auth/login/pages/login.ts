@@ -25,10 +25,6 @@ export class LoginComponent {
     senha: ['', [Validators.required, Validators.minLength(6)]]
   });
 
-  /**
-   * Getter para facilitar o acesso aos controles do formulário no HTML
-   * Resolve o erro TS2339
-   */
   get f() {
     return this.loginForm.controls;
   }
@@ -43,7 +39,6 @@ export class LoginComponent {
     this.errorMessage.set(null);
 
     try {
-      // O método do service agora é uma Promise (Enterprise Sync)
       await this.authService.login(this.loginForm.getRawValue() as any);
 
       this.loading.set(false);

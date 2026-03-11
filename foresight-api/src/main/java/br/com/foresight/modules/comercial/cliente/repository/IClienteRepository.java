@@ -10,9 +10,6 @@ import java.util.List;
 
 @Repository
 public interface IClienteRepository extends JpaRepository<Cliente, Long> {
-
-    // A mágica do Hibernate Filter já aplica o 'empresa_id = ?' nesta query secretamente.
-    // Usamos ILIKE no Postgres para ignorar maiúsculas/minúsculas.
     @Query("SELECT c FROM Cliente c WHERE c.nome ILIKE %:termo% OR c.documento ILIKE %:termo%")
     List<Cliente> buscarPorTermoSeguro(@Param("termo") String termo);
 }

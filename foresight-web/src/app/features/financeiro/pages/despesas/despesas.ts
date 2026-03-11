@@ -7,7 +7,7 @@ import { BrMaskPipe } from '../../../../shared/pipes/br-mask.pipe'; // Pipe Impo
 @Component({
   selector: 'app-despesas',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, BrMaskPipe], // Declaração do Pipe
+  imports: [CommonModule, ReactiveFormsModule, BrMaskPipe],
   templateUrl: './despesas.html',
   styleUrls: ['./despesas.scss']
 })

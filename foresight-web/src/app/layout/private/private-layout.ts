@@ -8,7 +8,7 @@ import { AuthService } from '../../core/auth/auth.service';
   standalone: true,
   imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './private-layout.html',
-  styleUrls: ['./private-layout.scss'] // Correção: styleUrls no plural, não styleUrl
+  styleUrls: ['./private-layout.scss']
 })
 export class PrivateLayoutComponent {
   public authService = inject(AuthService);

@@ -37,7 +37,6 @@ public class FluxoCaixaController {
         return ResponseEntity.ok(ApiResponse.success(service.buscarPorId(id)));
     }
 
-    // Padrão REST/Fintech: Exclusão física não existe, aplicamos uma ação customizada (estorno)
     @PostMapping("/{id}/estornar")
     public ResponseEntity<ApiResponse<FluxoCaixaDto>> estornar(@PathVariable Long id) {
         FluxoCaixaDto estorno = service.estornarMovimentacao(id);

@@ -20,7 +20,6 @@ export class AuditoriaComponent implements OnInit {
 
   carregarLogs() {
     this.loading.set(true);
-    // O Interceptor cuidará do Token automaticamente
     this.http.get<any[]>(`http://localhost:8080/api/auditoria`)
       .subscribe({
         next: (res) => {
@@ -34,7 +33,6 @@ export class AuditoriaComponent implements OnInit {
       });
   }
 
-  // Método auxiliar para cores das ações
   getBadgeClass(acao: string) {
     switch (acao) {
       case 'CRIACAO': return 'bg-success-subtle text-success';

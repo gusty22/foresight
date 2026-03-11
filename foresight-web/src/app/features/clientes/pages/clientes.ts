@@ -1,48 +1,99 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ClienteService, ClienteDto } from '../services/cliente.service';
+import { Subscription, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, filter, switchMap, catchError } from 'rxjs/operators';
+import { ClienteService } from '../services/cliente.service';
+import { ClienteDto, ClienteRequest } from '../models/cliente.model';
+import { AppFormatter, BrMaskPipe } from '../../../shared/pipes/br-mask.pipe';
 
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, BrMaskPipe],
   templateUrl: './clientes.html',
-  styleUrls: ['./clientes.scss']
+  styleUrls: ['./clientes.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ClientesComponent implements OnInit {
+export class ClientesComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private clienteService = inject(ClienteService);
 
-  // ESTADO REATIVO
   listaOriginal = signal<ClienteDto[]>([]);
   loading = signal(false);
   salvando = signal(false);
+  buscandoCep = signal(false);
   termoBusca = signal('');
-
-  // CONTROLE DE MODAL
   exibirModal = signal(false);
   clienteEmEdicaoId: number | null = null;
 
-  // FORMULÁRIO SEGURO (DTO Fechado)
+  private cepSubscription!: Subscription;
+
   clienteForm: FormGroup = this.fb.group({
-    nome: ['', [Validators.required, Validators.maxLength(150)]],
     tipoCliente: ['PF', Validators.required],
-    documento: [''], // Aplicaremos máscara no HTML
-    telefone: [''],
+    nome: ['', [Validators.required, Validators.maxLength(150)]],
+    documento: [''],
+    rgInscricaoEstadual: [''],
+    dataNascimento: [''],
     email: ['', [Validators.email]],
+    telefone: ['', Validators.required],
+    telefoneAlternativo: [''],
+    cep: [''],
+    logradouro: [''],
+    numero: [''],
+    complemento: [''],
+    bairro: [''],
     cidade: [''],
-    estado: [''],
-    statusCliente: ['ATIVO', Validators.required]
+    estado: ['', Validators.maxLength(2)],
+    statusCliente: ['ATIVO', Validators.required],
+    observacoes: ['']
   });
 
   get f() { return this.clienteForm.controls; }
 
   ngOnInit(): void {
     this.carregarClientes();
+    this.configurarBuscaCepAutomatica();
   }
 
-  // --- FILTROS (Client-side performance) ---
+  ngOnDestroy(): void {
+    // Previne Memory Leak
+    if (this.cepSubscription) {
+      this.cepSubscription.unsubscribe();
+    }
+  }
+
+  private configurarBuscaCepAutomatica(): void {
+    this.cepSubscription = this.clienteForm.get('cep')!.valueChanges
+      .pipe(
+        filter(valor => !!valor),
+        debounceTime(500),
+        distinctUntilChanged(),
+        filter(valor => valor.replace(/\D/g, '').length === 8),
+        switchMap(valor => {
+          this.buscandoCep.set(true);
+          return this.clienteService.buscarCep(valor).pipe(
+            catchError(() => {
+              this.buscandoCep.set(false);
+              return of(null);
+            })
+          );
+        })
+      )
+      .subscribe(dados => {
+        this.buscandoCep.set(false);
+        if (dados && !dados.erro) {
+          this.clienteForm.patchValue({
+            logradouro: dados.logradouro,
+            bairro: dados.bairro,
+            cidade: dados.localidade,
+            estado: dados.uf
+          });
+          document.getElementById('numeroInput')?.focus();
+        }
+      });
+  }
+
   clientesFiltrados = computed(() => {
     const termo = this.termoBusca().toLowerCase();
     return this.listaOriginal().filter(c =>
@@ -52,7 +103,6 @@ export class ClientesComponent implements OnInit {
     );
   });
 
-  // --- MÉTODOS HTTP ---
   carregarClientes(): void {
     this.loading.set(true);
     this.clienteService.listar().subscribe({
@@ -60,8 +110,7 @@ export class ClientesComponent implements OnInit {
         this.listaOriginal.set(res.data || []);
         this.loading.set(false);
       },
-      error: (err) => {
-        console.error('Erro ao carregar clientes', err);
+      error: () => {
         this.loading.set(false);
       }
     });
@@ -74,12 +123,13 @@ export class ClientesComponent implements OnInit {
     }
 
     this.salvando.set(true);
-
-    // Sanitização básica antes do envio
-    const payload: ClienteDto = {
-      ...this.clienteForm.value,
-      documento: this.clienteForm.value.documento?.replace(/\D/g, ''),
-      telefone: this.clienteForm.value.telefone?.replace(/\D/g, '')
+    const formValue = this.clienteForm.getRawValue();
+    const payload: ClienteRequest = {
+      ...formValue,
+      documento: formValue.documento ? formValue.documento.replace(/\D/g, '') : null,
+      telefone: formValue.telefone ? formValue.telefone.replace(/\D/g, '') : null,
+      telefoneAlternativo: formValue.telefoneAlternativo ? formValue.telefoneAlternativo.replace(/\D/g, '') : null,
+      cep: formValue.cep ? formValue.cep.replace(/\D/g, '') : null
     };
 
     if (this.clienteEmEdicaoId) {
@@ -97,7 +147,7 @@ export class ClientesComponent implements OnInit {
 
   excluirCliente(id: number | undefined): void {
     if (!id) return;
-    if (confirm('Atenção: Tem certeza que deseja excluir este cliente? Histórico de vendas poderá ser anonimizado.')) {
+    if (confirm('Atenção: Tem certeza que deseja excluir este cliente?')) {
       this.loading.set(true);
       this.clienteService.excluir(id).subscribe({
         next: () => this.carregarClientes(),
@@ -106,7 +156,6 @@ export class ClientesComponent implements OnInit {
     }
   }
 
-  // --- CONTROLE DE UI ---
   abrirModalNovo(): void {
     this.clienteEmEdicaoId = null;
     this.clienteForm.reset({ tipoCliente: 'PF', statusCliente: 'ATIVO' });
@@ -116,14 +165,11 @@ export class ClientesComponent implements OnInit {
   abrirModalEdicao(cliente: ClienteDto): void {
     this.clienteEmEdicaoId = cliente.id || null;
     this.clienteForm.patchValue({
-      nome: cliente.nome,
-      tipoCliente: cliente.tipoCliente || 'PF',
-      documento: this.mascararDocumentoString(cliente.documento || ''),
-      telefone: this.mascararTelefoneString(cliente.telefone || ''),
-      email: cliente.email,
-      cidade: cliente.cidade,
-      estado: cliente.estado,
-      statusCliente: cliente.statusCliente || 'ATIVO'
+      ...cliente,
+      documento: AppFormatter.documento(cliente.documento || ''),
+      telefone: AppFormatter.telefone(cliente.telefone || ''),
+      telefoneAlternativo: AppFormatter.telefone(cliente.telefoneAlternativo || ''),
+      cep: AppFormatter.cep(cliente.cep || '')
     });
     this.exibirModal.set(true);
   }
@@ -140,47 +186,21 @@ export class ClientesComponent implements OnInit {
     this.carregarClientes();
   }
 
-
-  // --- EVENTOS DE MÁSCARA (Inputs) ---
-  formatarDocumento(event: Event): void {
+  aplicarMascaraDocumento(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const tipo = this.clienteForm.get('tipoCliente')?.value;
-    let v = input.value.replace(/\D/g, "");
-
-    if (tipo === 'PF') {
-      if (v.length > 11) v = v.slice(0, 11);
-      v = v.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-    } else {
-      if (v.length > 14) v = v.slice(0, 14);
-      v = v.replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d)/, ".$1/$2").replace(/(\d{4})(\d)/, "$1-$2");
-    }
-    input.value = v;
-    this.clienteForm.get('documento')?.setValue(v, { emitEvent: false });
+    const formatado = AppFormatter.documento(input.value);
+    this.clienteForm.get('documento')?.setValue(formatado, { emitEvent: false });
   }
 
-  formatarTelefone(event: Event): void {
+  aplicarMascaraTelefone(event: Event, controle: string): void {
     const input = event.target as HTMLInputElement;
-    let v = input.value.replace(/\D/g, "");
-    if (v.length > 11) v = v.slice(0, 11);
-    if (v.length > 10) v = v.replace(/^(\d\d)(\d{5})(\d{4}).*/, "($1) $2-$3");
-    else v = v.replace(/^(\d\d)(\d{4})(\d{0,4}).*/, "($1) $2-$3");
-
-    input.value = v;
-    this.clienteForm.get('telefone')?.setValue(v, { emitEvent: false });
+    const formatado = AppFormatter.telefone(input.value);
+    this.clienteForm.get(controle)?.setValue(formatado, { emitEvent: false });
   }
 
-  // Helpers para edição
-  private mascararDocumentoString(v: string): string {
-    if (!v) return '';
-    if (v.length === 11) return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-    if (v.length === 14) return v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
-    return v;
-  }
-
-  private mascararTelefoneString(v: string): string {
-    if (!v) return '';
-    if (v.length === 11) return v.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-    if (v.length === 10) return v.replace(/^(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
-    return v;
+  aplicarMascaraCep(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const formatado = AppFormatter.cep(input.value);
+    this.clienteForm.get('cep')?.setValue(formatado);
   }
 }

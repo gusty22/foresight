@@ -26,7 +26,7 @@ public class RelatorioAvancadoController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
             @RequestParam(required = false) String tipo,
             @RequestParam(required = false) String categoria,
-            Pageable pageable) { // Pageable injeta ?page=0&size=10&sort=dataHora,desc
+            Pageable pageable) {
 
         return ResponseEntity.ok(ApiResponse.success(
                 service.buscarDados(termo, dataInicio, dataFim, tipo, categoria, pageable)

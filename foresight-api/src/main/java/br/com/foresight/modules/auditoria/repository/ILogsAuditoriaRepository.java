@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 @Repository
 public interface ILogsAuditoriaRepository extends JpaRepository<LogsAuditoria, Long> {
 
-    // QUERY PARA O BACKOFFICE: Filtra milhões de logs diretamente no banco (Alta Performance)
     @Query("""
         SELECT l FROM LogsAuditoria l 
         WHERE (:termo IS NULL OR LOWER(l.usuarioEmail) LIKE LOWER(CONCAT('%', :termo, '%')) OR LOWER(l.detalhes) LIKE LOWER(CONCAT('%', :termo, '%')))

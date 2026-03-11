@@ -1,5 +1,3 @@
-// src/app/features/backoffice/models/backoffice.model.ts
-
 export type StatusEmpresa = 'ATIVA' | 'SUSPENSA' | 'CANCELADA' | 'INADIMPLENTE';
 export type PlanoEmpresa = 'START' | 'PRO' | 'ENTERPRISE';
 
@@ -15,7 +13,7 @@ export interface EmpresaGlobalDto {
 
 export interface AlterarStatusEmpresaRequest {
   novoStatus: StatusEmpresa;
-  motivo: string; // Agora obrigatório por segurança
+  motivo: string;
 }
 
 export interface DashboardGlobalDto {

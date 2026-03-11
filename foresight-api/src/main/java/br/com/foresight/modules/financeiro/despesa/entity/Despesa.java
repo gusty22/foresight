@@ -30,7 +30,7 @@ public class Despesa extends BaseTenantEntity {
     private LocalDate dataVencimento;
 
     @Column(nullable = false)
-    private LocalDateTime data; // Data de pagamento/registro
+    private LocalDateTime data;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
@@ -38,7 +38,7 @@ public class Despesa extends BaseTenantEntity {
 
     @Builder.Default
     @Column(name = "status", length = 20)
-    private String status = "PAGO"; // PENDENTE, PAGO, ATRASADO
+    private String status = "PAGO";
 
     @Builder.Default
     @Column(name = "eh_pessoal")

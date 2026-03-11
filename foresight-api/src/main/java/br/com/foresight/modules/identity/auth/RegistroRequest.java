@@ -7,7 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record RegistroRequest(
-        // Dados do Usuário (Dono)
         @NotBlank(message = "O nome do usuário é obrigatório")
         String nomeUsuario,
 
@@ -22,7 +21,6 @@ public record RegistroRequest(
         @NotBlank(message = "O telefone é obrigatório")
         String telefoneUsuario,
 
-        // Dados do Tenant (Empresa) a ser provisionada
         @NotBlank(message = "O nome da empresa é obrigatório")
         String nomeEmpresa,
 

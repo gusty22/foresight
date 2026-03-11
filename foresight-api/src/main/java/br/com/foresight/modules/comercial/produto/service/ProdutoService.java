@@ -61,7 +61,6 @@ public class ProdutoService {
 
     @Transactional(readOnly = true)
     public List<ProdutoDto> listar() {
-        // A listagem retorna todos do tenant; o Front-end lida com a filtragem avançada visualmente.
         return produtoRepository.findAllByEmpresaId(getTenantIdSeguro()).stream()
                 .map(this::converterParaDto)
                 .collect(Collectors.toList());
@@ -97,7 +96,6 @@ public class ProdutoService {
         BigDecimal margem = p.calcularMargem();
         BigDecimal lucro = p.getLucroUnidade();
 
-        // Define o status de alerta com base na margem e também na quantidade de estoque vs mínimo
         String alerta = "OK";
         if (margem.compareTo(BigDecimal.ZERO) < 0) {
             alerta = "PREJUIZO";

@@ -7,9 +7,6 @@ import { AuditoriaLogDto } from '../models/auditoria.model';
 @Injectable({ providedIn: 'root' })
 export class AuditoriaService {
   private http = inject(HttpClient);
-
-  // DEVE CONTER O TRECHO /backoffice/
-  // Deve ter o /backoffice/ no meio!
   private readonly API = 'http://localhost:8080/api/backoffice/auditoria';
 
   listarLogs(pagina: number, tamanho: number, termo?: string, acao?: string, dataInicio?: string, dataFim?: string): Observable<ApiResponse<{ content: AuditoriaLogDto[], totalElements: number }>> {

@@ -81,10 +81,6 @@ public class DespesaService {
         despesaRepository.delete(despesa);
     }
 
-    // ===================================================================================
-    // MÉTODOS PRIVADOS DE INTEGRIDADE FINANCEIRA
-    // ===================================================================================
-
     private void registrarSaidaFluxoCaixa(Despesa despesa, Empresa empresa) {
         BigDecimal saldoAtual = fluxoCaixaRepository.findTopByEmpresaIdOrderByDataHoraDesc(empresa.getId())
                 .map(FluxoCaixa::getSaldoAposMovimentacao)
@@ -139,7 +135,6 @@ public class DespesaService {
     }
 
     private DespesaDto converterParaDto(Despesa despesa) {
-        // CORREÇÃO: Construtor completo e alinhado com o DespesaDto
         return new DespesaDto(
                 despesa.getId(),
                 despesa.getDescricao(),

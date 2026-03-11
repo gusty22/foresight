@@ -32,7 +32,7 @@ public class RelatorioFinanceiroService {
     private final IFluxoCaixaRepository fluxoCaixaRepository;
     private final IDespesaRepository despesaRepository;
     private final IProdutoRepository produtoRepository;
-    private final IVendaRepository vendaRepository; // INJETADO PARA LER AS VENDAS
+    private final IVendaRepository vendaRepository;
 
     private Long getTenantIdSeguro() {
         Long tenantId = TenantContext.getCurrentTenant();
@@ -46,16 +46,13 @@ public class RelatorioFinanceiroService {
     public DreDto gerarDreMensal(int mes) {
         Long tenantId = getTenantIdSeguro();
 
-        // Limites de data baseados no mês solicitado (considerando o ano atual)
         int anoAtual = YearMonth.now().getYear();
         LocalDateTime inicioMes = LocalDate.of(anoAtual, mes, 1).atStartOfDay();
         LocalDateTime fimMes = YearMonth.of(anoAtual, mes).atEndOfMonth().atTime(23, 59, 59);
 
-        // 1. Faturamento Total
         BigDecimal faturamentoBruto = vendaRepository.somarFaturamentoPorPeriodo(tenantId, inicioMes, fimMes);
         if (faturamentoBruto == null) faturamentoBruto = BigDecimal.ZERO;
 
-        // 2. Cálculo do CPV (Custo do Produto Vendido)
         List<Venda> vendasDoMes = vendaRepository.findAllByEmpresaIdOrderByDataDesc(tenantId).stream()
                 .filter(v -> "PAGO".equalsIgnoreCase(v.getStatusPagamento()) &&
                         v.getData().isAfter(inicioMes) && v.getData().isBefore(fimMes))
@@ -73,17 +70,12 @@ public class RelatorioFinanceiroService {
             }
         }
 
-        // 3. Lucro Bruto (Faturamento - CPV)
         BigDecimal lucroBruto = faturamentoBruto.subtract(custosMercadorias);
-
-        // 4. Despesas Operacionais
         BigDecimal despesasOperacionais = despesaRepository.somarDespesasMes(tenantId, mes);
         if (despesasOperacionais == null) despesasOperacionais = BigDecimal.ZERO;
 
-        // 5. Lucro Líquido Real
         BigDecimal lucroLiquido = lucroBruto.subtract(despesasOperacionais);
 
-        // 6. Margem Líquida
         Double margemLiquida = 0.0;
         if (faturamentoBruto.compareTo(BigDecimal.ZERO) > 0) {
             margemLiquida = lucroLiquido.divide(faturamentoBruto, 4, RoundingMode.HALF_UP)
@@ -92,7 +84,7 @@ public class RelatorioFinanceiroService {
 
         return new DreDto(
                 faturamentoBruto,
-                custosMercadorias, // AGORA O CPV ESTÁ SENDO ENVIADO PARA O FRONT!
+                custosMercadorias,
                 lucroBruto,
                 despesasOperacionais,
                 lucroLiquido,

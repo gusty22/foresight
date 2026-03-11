@@ -62,12 +62,10 @@ public class AutenticacaoService {
             throw new RegraNegocioException("Usuário ou senha inválidos.");
         }
 
-        // LÓGICA DE MULTI-TENANCY PARA SUPER ADMIN
         Optional<Empresa> empresaOpt = empresaRepository.findByDonoId(usuario.getId());
         Long empresaId = null;
         String nomeExibicaoEmpresa = "Administração Global";
 
-        // Se NÃO for Super Admin, a empresa é obrigatória para manter a integridade do SaaS
         if (!usuario.getRole().equals(Role.ROLE_SUPER_ADMIN)) {
             Empresa empresa = empresaOpt.orElseThrow(() ->
                     new RegraNegocioException("Erro de integridade: Usuário não possui uma empresa vinculada."));

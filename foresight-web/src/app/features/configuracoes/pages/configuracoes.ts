@@ -32,7 +32,6 @@ export class ConfiguracoesComponent implements OnInit {
     nome: ['', Validators.required],
     cnpj: [{ value: '', disabled: true }],
     endereco: [''],
-    // Iniciado como nulo para que o placeholder do HTML aja
     proLaboreDesejado: [null],
     tipo: [{ value: 'SERVICO', disabled: true }]
   });

@@ -34,10 +34,7 @@ public class FluxoCaixaService {
         return tenantId;
     }
 
-    /**
-     * Usa PESSIMISTIC_WRITE. Garante que duas threads concorrentes da mesma empresa
-     * não leiam o mesmo saldo anterior ao mesmo tempo.
-     */
+
     private Empresa lockEmpresa(Long tenantId) {
         return empresaRepository.findByIdForUpdate(tenantId)
                 .orElseThrow(() -> new RegraNegocioException("Empresa não encontrada ou falha no lock transacional."));
@@ -46,7 +43,7 @@ public class FluxoCaixaService {
     @Transactional
     public FluxoCaixaDto registrarMovimentacao(FluxoCaixaRequest request) {
         Long tenantId = getTenantIdSeguro();
-        Empresa empresa = lockEmpresa(tenantId); // LOCK INICIADO: Fila segura para a empresa
+        Empresa empresa = lockEmpresa(tenantId);
 
         BigDecimal saldoAnterior = repository.findTopByEmpresaIdOrderByDataHoraDesc(tenantId)
                 .map(FluxoCaixa::getSaldoAposMovimentacao)
@@ -70,7 +67,6 @@ public class FluxoCaixaService {
         return toDto(repository.save(entidade));
     }
 
-    // Sobrecarga interna usada pelo VendaService
     @Transactional
     public void registrarMovimentacaoInterna(Empresa empresa, String descricao, BigDecimal valor, TipoMovimentacao tipo, CategoriaFluxo categoria) {
         FluxoCaixaRequest req = new FluxoCaixaRequest(descricao, valor, tipo, categoria);
@@ -89,20 +85,16 @@ public class FluxoCaixaService {
         FluxoCaixa fc = repository.findById(id)
                 .orElseThrow(() -> new RegraNegocioException("Movimentação não encontrada."));
 
-        // Defesa em Profundidade: Verifica posse, mesmo com filtro ativo
         if (!fc.getEmpresa().getId().equals(tenantId)) {
             throw new RegraNegocioException("Acesso Negado: Esta movimentação pertence a outra entidade.");
         }
         return toDto(fc);
     }
 
-    /**
-     * O padrão contábil exige ESTORNO em vez de DELETE físico.
-     */
     @Transactional
     public FluxoCaixaDto estornarMovimentacao(Long id) {
         Long tenantId = getTenantIdSeguro();
-        Empresa empresa = lockEmpresa(tenantId); // Previne concorrência no estorno
+        Empresa empresa = lockEmpresa(tenantId);
 
         FluxoCaixa original = repository.findById(id)
                 .orElseThrow(() -> new RegraNegocioException("Movimentação não encontrada."));
@@ -115,11 +107,9 @@ public class FluxoCaixaService {
             throw new RegraNegocioException("Este lançamento já foi estornado anteriormente.");
         }
 
-        // Marca como estornado
         original.setEstornado(true);
         repository.save(original);
 
-        // Cria o lançamento inverso
         TipoMovimentacao tipoInverso = original.getTipo() == TipoMovimentacao.ENTRADA ? TipoMovimentacao.SAIDA : TipoMovimentacao.ENTRADA;
 
         BigDecimal saldoAnterior = repository.findTopByEmpresaIdOrderByDataHoraDesc(tenantId)
@@ -137,7 +127,7 @@ public class FluxoCaixaService {
                 .categoriaFluxo(original.getCategoriaFluxo())
                 .dataHora(LocalDateTime.now())
                 .saldoAposMovimentacao(saldoAnterior.add(valorLancamento))
-                .estornado(true) // O próprio estorno já nasce bloqueado para não ser estornado
+                .estornado(true)
                 .referenciaEstornoId(original.getId())
                 .build();
 

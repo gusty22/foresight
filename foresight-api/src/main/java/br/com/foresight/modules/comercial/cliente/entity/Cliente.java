@@ -32,7 +32,6 @@ public class Cliente extends BaseTenantEntity {
     @Column(length = 255)
     private String email;
 
-    // CORREÇÃO: Alinhado com o nome da coluna no V1__init_schema.sql
     @Column(name = "data_nascimento_fundacao")
     private LocalDate dataNascimento;
 

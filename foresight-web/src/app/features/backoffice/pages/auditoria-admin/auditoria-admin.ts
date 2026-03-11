@@ -15,21 +15,19 @@ import { BrMaskPipe } from '../../../../shared/pipes/br-mask.pipe';
   imports: [CommonModule, ReactiveFormsModule, BrMaskPipe],
   templateUrl: './auditoria-admin.html',
   styleUrls: ['./auditoria-admin.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush // Alta performance
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AuditoriaAdminComponent implements OnInit {
   private auditoriaService = inject(AuditoriaService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
 
-  // Estados
   logs = signal<AuditoriaLogDto[]>([]);
   totalElementos = signal<number>(0);
   loading = signal<boolean>(true);
   paginaAtual = signal<number>(0);
   itensPorPagina = 50;
 
-  // Formulário de Filtros Dinâmicos
   filtroForm: FormGroup = this.fb.group({
     termo: [''],
     acao: ['TODAS'],
@@ -37,7 +35,6 @@ export class AuditoriaAdminComponent implements OnInit {
     dataFim: ['']
   });
 
-  // Lista de ações para o select (pode ser mockada ou vinda de um Enum)
   acoesDisponiveis = [
     'MUDANCA_STATUS_EMPRESA',
     'LOGIN_FALHO',
@@ -51,14 +48,13 @@ export class AuditoriaAdminComponent implements OnInit {
     this.escutarFiltros();
   }
 
-  // Monitora alterações nos filtros e busca no backend com debounce (proteção anti-DDoS local)
   private escutarFiltros(): void {
     this.filtroForm.valueChanges.pipe(
       debounceTime(600),
       distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
       switchMap(valores => {
         this.loading.set(true);
-        this.paginaAtual.set(0); // Volta para a pág 1 ao filtrar
+        this.paginaAtual.set(0);
         return this.auditoriaService.listarLogs(
           0,
           this.itensPorPagina,
@@ -108,7 +104,7 @@ export class AuditoriaAdminComponent implements OnInit {
   mudarPagina(novaPagina: number): void {
     if (novaPagina < 0 || novaPagina >= Math.ceil(this.totalElementos() / this.itensPorPagina)) return;
     this.paginaAtual.set(novaPagina);
-    this.carregarLogs(); // Chama direto sem passar pelo debounce
+    this.carregarLogs();
   }
 
   limparFiltros(): void {

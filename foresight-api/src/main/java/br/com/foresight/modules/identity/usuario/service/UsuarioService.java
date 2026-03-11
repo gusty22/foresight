@@ -27,11 +27,6 @@ public class UsuarioService {
     private final IEmpresaRepository empresaRepository;
     private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Recupera o usuário logado de forma resiliente através do SecurityContext.
-     * DEFESA: Agora prioriza o objeto Usuario completo injetado pelo Filtro JWT,
-     * garantindo performance e evitando erros de "Sessão Inválida".
-     */
     private Usuario getUsuarioLogadoSeguro() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
@@ -39,20 +34,14 @@ public class UsuarioService {
             throw new RegraNegocioException("Acesso negado. Sessão inexistente ou expirada.");
         }
 
-        // Se o Filtro JWT injetou o objeto Usuario corretamente, retornamos ele direto
         if (auth.getPrincipal() instanceof Usuario usuario) {
             return usuario;
         }
 
-        // Fallback defensivo: busca por email se o principal for apenas uma String
         return usuarioRepository.findByEmail(auth.getName())
                 .orElseThrow(() -> new RegraNegocioException("Segurança: Usuário logado não encontrado na base de dados."));
     }
 
-    /**
-     * Retorna o perfil completo do usuário e dados da empresa (tenant).
-     * MULTI-TENANT: Permite que Super Admin não possua empresa vinculada.
-     */
     @Transactional(readOnly = true)
     public PerfilUsuarioDto obterMeuPerfil() {
         Usuario usuario = getUsuarioLogadoSeguro();
@@ -69,7 +58,6 @@ public class UsuarioService {
                     e.getEstado(), e.getProLaboreDesejado(), e.getTipo()
             );
         } else if (usuario.getRole() != Role.ROLE_SUPER_ADMIN) {
-            // SaaS INTEGRITY: Apenas o Super Admin pode existir "sem pátria" (sem empresa).
             throw new RegraNegocioException("Erro de integridade: Sua conta de cliente não possui uma empresa vinculada.");
         }
 
@@ -82,9 +70,6 @@ public class UsuarioService {
         );
     }
 
-    /**
-     * Atualiza dados básicos do perfil.
-     */
     @Transactional
     public PerfilUsuarioDto atualizarMeuPerfil(AtualizarPerfilRequest request) {
         Usuario usuario = getUsuarioLogadoSeguro();
@@ -96,9 +81,6 @@ public class UsuarioService {
         return obterMeuPerfil();
     }
 
-    /**
-     * Troca de senha com validação de credencial atual (Defesa contra sequestro de sessão).
-     */
     @Transactional
     public void atualizarMinhaSenha(AtualizarSenhaRequest request) {
         Usuario usuario = getUsuarioLogadoSeguro();
@@ -111,10 +93,6 @@ public class UsuarioService {
         usuarioRepository.save(usuario);
     }
 
-    /**
-     * Encerramento definitivo da conta e remoção de dados do inquilino.
-     * PROTEÇÃO: Impede que o Super Admin se delete acidentalmente.
-     */
     @Transactional
     public void deletarMinhaConta() {
         Usuario usuario = getUsuarioLogadoSeguro();

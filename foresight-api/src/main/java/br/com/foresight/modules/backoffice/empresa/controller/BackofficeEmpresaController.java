@@ -42,7 +42,6 @@ public class BackofficeEmpresaController {
         return ResponseEntity.ok(ApiResponse.success(atualizada, "Governança: Status da empresa atualizado com sucesso."));
     }
 
-    // Endpoint Estratégico de Suporte
     @PostMapping("/{id}/impersonate")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, String>>> gerarTokenSuporte(@PathVariable Long id) {

@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @MappedSuperclass
-@EntityListeners(AuditingEntityListener.class) // Habilita preenchimento automático do Spring Data
+@EntityListeners(AuditingEntityListener.class)
 public abstract class BaseAuditEntity extends BaseEntity {
 
     @CreatedDate

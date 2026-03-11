@@ -17,7 +17,6 @@ export class DreComponent implements OnInit {
   dre = signal<any>(null);
   loading = signal(true);
 
-  // Rota simplificada e segura
   private readonly API = 'http://localhost:8080/api/relatorios/dre';
 
   ngOnInit() {

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ApiResponse } from '../../../core/http/api-response.model'; // Sem o .ts no final
+import { ApiResponse } from '../../../core/http/api-response.model';
 
 export interface DespesaRequest {
   descricao: string;
@@ -19,7 +19,6 @@ export class DespesaService {
   salvar(despesa: DespesaRequest): Observable<ApiResponse<any>> {
     const payload = { ...despesa };
 
-    // Tratamento Enterprise: Formatação da data ISO
     if (payload.data && !payload.data.includes('T')) {
       payload.data = `${payload.data}T00:00:00`;
     }

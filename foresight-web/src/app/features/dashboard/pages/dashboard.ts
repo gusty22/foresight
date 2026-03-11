@@ -14,8 +14,6 @@ import { BrMaskPipe } from '../../../shared/pipes/br-mask.pipe';
 })
 export class DashboardComponent implements OnInit {
   private dashboardService = inject(DashboardService);
-
-  // Tipagem estrita: Este signal só aceita a interface DashboardResumo ou null
   resumo = signal<DashboardResumo | null>(null);
   loading = signal<boolean>(true);
   erro = signal<boolean>(false);

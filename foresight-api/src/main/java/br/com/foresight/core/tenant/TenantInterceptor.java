@@ -24,14 +24,12 @@ public class TenantInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-        // 1. BLINDAGEM ADMINISTRATIVA: Super Admin ignora qualquer filtro de empresa
         if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof Usuario usuario) {
             if (usuario.getRole() == Role.ROLE_SUPER_ADMIN) {
                 return true;
             }
         }
 
-        // 2. FILTRO DE INQUILINO (SaaS)
         Long tenantId = TenantContext.getCurrentTenant();
         if (tenantId != null) {
             Session session = entityManager.unwrap(Session.class);

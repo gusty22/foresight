@@ -25,11 +25,11 @@ export class CadastroComponent {
   cadastroForm: FormGroup = this.fb.group({
     nomeUsuario: ['', [Validators.required, Validators.maxLength(150)]],
     email: ['', [Validators.required, Validators.email]],
-    telefoneUsuario: ['', [Validators.required, Validators.minLength(14)]], // Exige ao menos (XX) 9XXXX-XXXX formatado
+    telefoneUsuario: ['', [Validators.required, Validators.minLength(14)]],
     senha: ['', [Validators.required, Validators.minLength(6)]],
     confirmarSenha: ['', [Validators.required]],
     nomeEmpresa: ['', [Validators.required, Validators.maxLength(150)]],
-    cnpjEmpresa: ['', [Validators.required, Validators.minLength(18)]], // Exige XX.XXX.XXX/YYYY-ZZ completo
+    cnpjEmpresa: ['', [Validators.required, Validators.minLength(18)]],
     tipoEmpresa: ['SERVICO', [Validators.required]]
   }, { validators: this.senhasIguaisValidator });
 
@@ -40,8 +40,6 @@ export class CadastroComponent {
     const confirmarSenha = control.get('confirmarSenha')?.value;
     return senha === confirmarSenha ? null : { senhasDiferentes: true };
   }
-
-  // --- MÁSCARAS INTELIGENTES (UX de Digitação) ---
 
   aplicarMascaraCNPJ(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -88,8 +86,6 @@ export class CadastroComponent {
     this.loading.set(true);
 
     const rawData = this.cadastroForm.value;
-
-    // Payload limpo (apenas números) para o Backend
     const payload: RegistroRequest = {
       nomeUsuario: rawData.nomeUsuario,
       email: rawData.email,

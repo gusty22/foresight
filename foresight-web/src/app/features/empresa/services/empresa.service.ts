@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-// O import do environment foi removido para evitar o erro TS2307
 import { EmpresaRequest, EmpresaDto } from '../models/empresa.model';
 import { ApiResponse } from '../../../core/http/api-response.model';
 
@@ -10,7 +9,6 @@ import { ApiResponse } from '../../../core/http/api-response.model';
 })
 export class EmpresaService {
   private http = inject(HttpClient);
-  // URL Hardcoded temporariamente para o MVP local (o ideal é ter a URL em um app.config ou environment criado)
   private apiUrl = 'http://localhost:8080/api/empresas';
 
   criar(request: EmpresaRequest): Observable<ApiResponse<EmpresaDto>> {

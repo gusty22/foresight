@@ -9,7 +9,6 @@ import java.util.Optional;
 
 @Repository
 public interface IProdutoRepository extends JpaRepository<Produto, Long> {
-    // Defesa em profundidade: Exigimos o ID da empresa mesmo com o Hibernate Filter ligado.
     List<Produto> findAllByEmpresaId(Long empresaId);
 
     Optional<Produto> findByIdAndEmpresaId(Long id, Long empresaId);

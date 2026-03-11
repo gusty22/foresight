@@ -16,7 +16,7 @@ import org.hibernate.annotations.ParamDef;
 @MappedSuperclass
 @FilterDef(name = "tenantFilter", parameters = {@ParamDef(name = "tenantId", type = Long.class)})
 @Filter(name = "tenantFilter", condition = "empresa_id = :tenantId")
-public abstract class BaseTenantEntity extends BaseAuditEntity { // Mudou de BaseEntity para BaseAuditEntity
+public abstract class BaseTenantEntity extends BaseAuditEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "empresa_id", nullable = false, updatable = false)

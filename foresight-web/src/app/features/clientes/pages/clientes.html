@@ -3,7 +3,7 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <h2 class="fw-bold text-dark m-0 ls-tight">Carteira de Clientes</h2>
-      <p class="text-muted m-0">Gerencie contatos e dados de faturamento.</p>
+      <p class="text-muted m-0">Gerencie contatos e inteligência comercial.</p>
     </div>
     <button class="btn btn-dark fw-bold shadow-sm" (click)="abrirModalNovo()">
       <i class="bi bi-person-plus-fill me-2"></i> Novo Cliente
@@ -47,7 +47,7 @@
               <div>
                 <div class="fw-bold text-dark">{{ c.nome }}</div>
                 <div class="text-muted extra-small">
-                  {{ c.documento || 'Sem doc.' }}
+                  {{ (c.documento | brFmt:'doc') || 'Sem doc.' }}
                   <span class="badge bg-light text-secondary border ms-1">{{ c.tipoCliente || 'PF' }}</span>
                 </div>
               </div>
@@ -55,7 +55,10 @@
           </td>
           <td>
             <div class="d-flex flex-column">
-              <span class="small"><i class="bi bi-telephone me-1 text-muted"></i> {{ c.telefone || 'Não info.' }}</span>
+              <span class="small">
+                <i class="bi bi-whatsapp me-1 text-success"></i>
+                {{ (c.telefone | brFmt:'tel') || 'Não info.' }}
+              </span>
               <span class="extra-small text-muted text-truncate" style="max-width: 150px;">{{ c.email || '---' }}</span>
             </div>
           </td>
@@ -77,7 +80,6 @@
             </button>
           </td>
         </tr>
-
         <tr *ngIf="clientesFiltrados().length === 0">
           <td colspan="5" class="text-center py-5">
             <div class="py-4">
@@ -100,68 +102,129 @@
       <div class="modal-header bg-light border-0 p-4">
         <h5 class="fw-bold m-0 text-dark">
           <i class="bi bi-person-lines-fill me-2 text-primary"></i>
-          {{ clienteEmEdicaoId ? 'Editar Cliente' : 'Novo Cliente' }}
+          {{ clienteEmEdicaoId ? 'Ficha do Cliente' : 'Novo Cliente' }}
         </h5>
         <button type="button" class="btn-close shadow-none" (click)="fecharModal()" [disabled]="salvando()"></button>
       </div>
 
       <form [formGroup]="clienteForm" (ngSubmit)="salvarCliente()">
-        <div class="modal-body p-4">
+        <div class="modal-body p-4 pt-0">
 
-          <h6 class="fw-bold text-muted small text-uppercase mb-3 border-bottom pb-2">Informações Principais</h6>
-          <div class="row g-3 mb-4">
-            <div class="col-md-8">
-              <label class="form-label small fw-bold">Nome Completo / Razão Social *</label>
-              <input type="text" formControlName="nome" class="form-control" [ngClass]="{'is-invalid': f['nome'].invalid && f['nome'].touched}">
+          <ul class="nav nav-tabs nav-fill mb-4 mt-3" id="clienteTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active fw-bold text-dark" id="dados-tab" data-bs-toggle="tab" data-bs-target="#dados" type="button" role="tab">Dados e Contato</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link fw-bold text-dark" id="endereco-tab" data-bs-toggle="tab" data-bs-target="#endereco" type="button" role="tab">Endereço</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link fw-bold text-dark" id="financeiro-tab" data-bs-toggle="tab" data-bs-target="#financeiro" type="button" role="tab">Comercial</button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="clienteTabsContent">
+
+            <div class="tab-pane fade show active" id="dados" role="tabpanel">
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold">Pessoa *</label>
+                  <select formControlName="tipoCliente" class="form-select">
+                    <option value="PF">Física</option>
+                    <option value="PJ">Jurídica</option>
+                  </select>
+                </div>
+                <div class="col-md-9">
+                  <label class="form-label small fw-bold">Nome Completo / Razão Social *</label>
+                  <input type="text" formControlName="nome" class="form-control" [ngClass]="{'is-invalid': f['nome'].invalid && f['nome'].touched}">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">{{ f['tipoCliente'].value === 'PF' ? 'CPF' : 'CNPJ' }}</label>
+                  <input type="text" formControlName="documento" class="form-control" (input)="aplicarMascaraDocumento($event)">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">{{ f['tipoCliente'].value === 'PF' ? 'RG' : 'Inscrição Estadual' }}</label>
+                  <input type="text" formControlName="rgInscricaoEstadual" class="form-control">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold text-success">WhatsApp *</label>
+                  <input type="text" formControlName="telefone" class="form-control" (input)="aplicarMascaraTelefone($event, 'telefone')">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Telefone Fixo / Recado</label>
+                  <input type="text" formControlName="telefoneAlternativo" class="form-control" (input)="aplicarMascaraTelefone($event, 'telefoneAlternativo')">
+                </div>
+                <div class="col-md-12">
+                  <label class="form-label small fw-bold">E-mail</label>
+                  <input type="email" formControlName="email" class="form-control" [ngClass]="{'is-invalid': f['email'].invalid && f['email'].touched}">
+                </div>
+              </div>
             </div>
-            <div class="col-md-4">
-              <label class="form-label small fw-bold">Tipo</label>
-              <select formControlName="tipoCliente" class="form-select">
-                <option value="PF">Pessoa Física (PF)</option>
-                <option value="PJ">Pessoa Jurídica (PJ)</option>
-              </select>
+
+            <div class="tab-pane fade" id="endereco" role="tabpanel">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold d-flex justify-content-between">
+                    CEP
+                    <span *ngIf="buscandoCep()" class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                  </label>
+                  <input type="text" formControlName="cep" class="form-control" (input)="aplicarMascaraCep($event)" placeholder="00000-000">
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label small fw-bold">Logradouro</label>
+                  <input type="text" formControlName="logradouro" class="form-control" [readonly]="buscandoCep()">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold">Número</label>
+                  <input type="text" formControlName="numero" id="numeroInput" class="form-control">
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label small fw-bold">Complemento</label>
+                  <input type="text" formControlName="complemento" class="form-control">
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label small fw-bold">Bairro</label>
+                  <input type="text" formControlName="bairro" class="form-control" [readonly]="buscandoCep()">
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label small fw-bold">Cidade</label>
+                  <input type="text" formControlName="cidade" class="form-control" [readonly]="buscandoCep()">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small fw-bold">UF</label>
+                  <input type="text" formControlName="estado" class="form-control text-uppercase" maxlength="2" [readonly]="buscandoCep()">
+                </div>
+              </div>
             </div>
-            <div class="col-md-6">
-              <label class="form-label small fw-bold">CPF / CNPJ</label>
-              <input type="text" formControlName="documento" class="form-control" (input)="formatarDocumento($event)" placeholder="Somente números">
+
+            <div class="tab-pane fade" id="financeiro" role="tabpanel">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Status no Sistema</label>
+                  <select formControlName="statusCliente" class="form-select font-monospace">
+                    <option value="ATIVO" class="text-success">✅ ATIVO (Liberado)</option>
+                    <option value="INATIVO" class="text-secondary">⏸ INATIVO (Sem Compras)</option>
+                    <option value="INADIMPLENTE" class="text-danger">⛔ INADIMPLENTE (Bloqueado)</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Data de Nascimento / Fundação</label>
+                  <input type="date" formControlName="dataNascimento" class="form-control">
+                </div>
+                <div class="col-md-12">
+                  <label class="form-label small fw-bold">Anotações Internas (Segredo da Empresa)</label>
+                  <textarea formControlName="observacoes" class="form-control" rows="3" placeholder="Ex: Cliente prefere contato via WhatsApp..."></textarea>
+                </div>
+              </div>
             </div>
-            <div class="col-md-6">
-              <label class="form-label small fw-bold">Telefone / WhatsApp</label>
-              <input type="text" formControlName="telefone" class="form-control" (input)="formatarTelefone($event)" placeholder="(00) 00000-0000">
-            </div>
-            <div class="col-md-12">
-              <label class="form-label small fw-bold">E-mail</label>
-              <input type="email" formControlName="email" class="form-control" placeholder="contato@email.com">
-            </div>
+
           </div>
-
-          <h6 class="fw-bold text-muted small text-uppercase mb-3 border-bottom pb-2">Endereço & Gestão</h6>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label small fw-bold">Cidade</label>
-              <input type="text" formControlName="cidade" class="form-control">
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small fw-bold">UF</label>
-              <input type="text" formControlName="estado" class="form-control" maxlength="2" placeholder="Ex: SP">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label small fw-bold">Status do Cliente</label>
-              <select formControlName="statusCliente" class="form-select">
-                <option value="ATIVO">Ativo</option>
-                <option value="INATIVO">Inativo</option>
-                <option value="INADIMPLENTE">Inadimplente</option>
-              </select>
-            </div>
-          </div>
-
         </div>
 
         <div class="modal-footer border-0 p-4 bg-light">
           <button type="button" class="btn btn-outline-secondary fw-bold px-4" (click)="fecharModal()" [disabled]="salvando()">Cancelar</button>
           <button type="submit" class="btn btn-dark fw-bold px-5" [disabled]="clienteForm.invalid || salvando()">
             <span *ngIf="salvando()" class="spinner-border spinner-border-sm me-2"></span>
-            Salvar
+            Salvar Cliente
           </button>
         </div>
       </form>

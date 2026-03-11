@@ -18,7 +18,7 @@ public class LogsAuditoria {
     private Long id;
 
     @Column(name = "empresa_id", updatable = false)
-    private Long empresaId; // Pode ser nulo em ações globais do Super Admin
+    private Long empresaId;
 
     @Column(nullable = false, length = 150, updatable = false)
     private String entidadeNome;

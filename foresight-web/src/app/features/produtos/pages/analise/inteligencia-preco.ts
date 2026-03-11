@@ -19,13 +19,9 @@ export class InteligenciaPrecoComponent implements OnInit {
   private precificacaoService = inject(PrecificacaoService);
   private destroyRef = inject(DestroyRef);
 
-  // Estados Gerais
   loading = signal<boolean>(false);
   produtos = signal<ProdutoDto[]>([]);
 
-  // =======================================================
-  // LADO ESQUERDO: SIMULADOR DE PREÇO UNITÁRIO
-  // =======================================================
   simuladorForm: FormGroup = this.fb.group({
     produtoId: [null],
     custoBase: [null, [Validators.required, Validators.min(0.01)]],
@@ -40,21 +36,13 @@ export class InteligenciaPrecoComponent implements OnInit {
   lucroUnitario = signal<number>(0);
   margemLiquida = signal<number>(0);
   markup = signal<number>(0);
-
-  // =======================================================
-  // LADO DIREITO: ENGENHARIA DE METAS (MIX DE PRODUTOS)
-  // =======================================================
   metaGlobalValor = signal<number>(0);
   exibicaoMetaGlobal = signal<string>('');
-  produtosMixIds = signal<number[]>([]); // Guarda os IDs selecionados para a meta
-
-  // Produtos aptos para compor meta (Tem que ter lucro > 0)
+  produtosMixIds = signal<number[]>([]);
   produtosElegiveisParaMeta = computed(() => {
     const idsJaAdicionados = this.produtosMixIds();
     return this.produtos().filter(p => p.lucroReal > 0 && !idsJaAdicionados.includes(p.id));
   });
-
-  // Motor de Cálculo do Mix
   planejamentoMix = computed(() => {
     const meta = this.metaGlobalValor();
     const ids = this.produtosMixIds();
@@ -63,13 +51,10 @@ export class InteligenciaPrecoComponent implements OnInit {
     if (meta <= 0 || produtosNoMix.length === 0) {
       return null;
     }
-
-    // Estratégia de negócio: Divide o esforço de lucro igualmente entre o mix
     const metaPorProduto = meta / produtosNoMix.length;
     let faturamentoProjetadoGeral = 0;
 
     const detalhes = produtosNoMix.map(p => {
-      // Teto para garantir que não falte centavos na meta
       const qtdNecessaria = Math.ceil(metaPorProduto / p.lucroReal);
       const faturamentoGerado = qtdNecessaria * p.precoVenda;
 
@@ -109,8 +94,6 @@ export class InteligenciaPrecoComponent implements OnInit {
       }
     });
   }
-
-  // --- MÉTODOS DO SIMULADOR (Lado Esquerdo) ---
   aoSelecionarProdutoSimulador(event: Event): void {
     const target = event.target as HTMLSelectElement;
     if (!target.value || target.value === 'null') {
@@ -167,7 +150,6 @@ export class InteligenciaPrecoComponent implements OnInit {
     return { cor: 'success', texto: 'Alta Lucratividade', icone: 'bi-star-fill' };
   }
 
-  // --- MÉTODOS DO PLANEJADOR DE MIX (Lado Direito) ---
   formatarMetaGlobal(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.value === '') {
@@ -189,7 +171,7 @@ export class InteligenciaPrecoComponent implements OnInit {
 
     if (id) {
       this.produtosMixIds.update(ids => [...ids, id]);
-      select.value = ''; // Reseta o select após adicionar
+      select.value = '';
     }
   }
 
@@ -201,7 +183,6 @@ export class InteligenciaPrecoComponent implements OnInit {
     this.produtosMixIds.set([]);
   }
 
-  // --- HELPER DE MOEDA GERAL ---
   formatarMoedaSimulador(event: Event, campo: string): void {
     const input = event.target as HTMLInputElement;
     if (input.value === '') {

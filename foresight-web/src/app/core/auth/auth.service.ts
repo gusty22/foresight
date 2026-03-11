@@ -17,10 +17,6 @@ export class AuthService {
   token = signal<string | null>(localStorage.getItem(this.TOKEN_KEY));
   role = signal<string | null>(localStorage.getItem(this.ROLE_KEY));
 
-  /**
-   * Realiza o login convertendo o Observable para Promise para garantir
-   * a ordem de execução da persistência.
-   */
   async login(dados: LoginRequest): Promise<ApiResponse<TokenResponse>> {
     const res = await firstValueFrom(this.http.post<ApiResponse<TokenResponse>>(`${this.API}/login`, dados));
 
@@ -52,12 +48,9 @@ export class AuthService {
       const payload = JSON.parse(atob(jwt.split('.')[1]));
       let r = payload.role || '';
       if (r && !r.startsWith('ROLE_')) r = `ROLE_${r}`;
-
-      // Escrita atômica no LocalStorage
       localStorage.setItem(this.TOKEN_KEY, jwt);
       localStorage.setItem(this.ROLE_KEY, r);
 
-      // Atualização dos Signals
       this.token.set(jwt);
       this.role.set(r);
     } catch (e) {

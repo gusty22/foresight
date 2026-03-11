@@ -23,7 +23,7 @@ public class BackofficeAuditoriaController {
     private final BackofficeAuditoriaService auditoriaService;
 
     @GetMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN')") // BLINDAGEM DE SEGURANÇA OBRIGATÓRIA
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Page<LogAuditoriaDto>>> listarLogs(
             @RequestParam(required = false) String termo,
             @RequestParam(required = false) String acao,

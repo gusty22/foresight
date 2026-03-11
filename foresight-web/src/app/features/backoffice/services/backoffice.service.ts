@@ -17,7 +17,6 @@ export class BackofficeService {
     return this.http.get<ApiResponse<DashboardGlobalDto>>(`${this.API_DASHBOARD}/resumo`);
   }
 
-  // BUSCA SERVER-SIDE (Escalável para milhares de registros)
   listarEmpresas(termo?: string, pagina: number = 0, tamanho: number = 20): Observable<ApiResponse<{ content: EmpresaGlobalDto[], totalElements: number }>> {
     let params = new HttpParams()
       .set('page', pagina.toString())
@@ -34,9 +33,7 @@ export class BackofficeService {
     return this.http.patch<ApiResponse<EmpresaGlobalDto>>(`${this.API_EMPRESAS}/${id}/status`, request);
   }
 
-  // FUNCIONALIDADE ESTRATÉGICA: Gerar token temporário para suporte
   gerarTokenAcessoSuporte(empresaId: number): Observable<ApiResponse<{ token: string }>> {
-    // CORREÇÃO: Variável na URL alterada de ${id} para ${empresaId}
     return this.http.post<ApiResponse<{ token: string }>>(`${this.API_EMPRESAS}/${empresaId}/impersonate`, {});
   }
 }

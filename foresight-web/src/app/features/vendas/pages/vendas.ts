@@ -41,14 +41,10 @@ export class VendasComponent implements OnInit {
 
   quantidadeSelecionada: number | null = null;
   termoBuscaProduto = '';
-
-  // --- ESTADOS DO AUTOCOMPLETE DE CLIENTES ---
   termoBuscaCliente = new Subject<string>();
   sugestoesClientes = signal<any[]>([]);
   buscandoClientes = signal(false);
   exibirSugestoes = signal(false);
-
-  // Cache inteligente para evitar consultas desnecessárias no banco
   ultimoTermoSemResultado = signal<string | null>(null);
 
   ngOnInit(): void {
@@ -63,16 +59,12 @@ export class VendasComponent implements OnInit {
     });
   }
 
-  // ==========================================
-  // LÓGICA DE AUTOCOMPLETE (RXJS AVANÇADO)
-  // ==========================================
   private configurarBuscaClientesAutocomplete(): void {
     this.termoBuscaCliente.pipe(
-      debounceTime(500), // Aguarda meio segundo após a digitação parar
-      map(termo => termo.trim().toLowerCase()), // Força Case Insensitive e remove espaços extras
-      distinctUntilChanged(), // Só dispara se a palavra realmente mudou
+      debounceTime(500),
+      map(termo => termo.trim().toLowerCase()),
+      distinctUntilChanged(),
       filter(termo => {
-        // Bloqueia buscas curtas demais
         if (termo.length < 3) {
           this.sugestoesClientes.set([]);
           this.exibirSugestoes.set(false);
@@ -81,8 +73,6 @@ export class VendasComponent implements OnInit {
           return false;
         }
 
-        // INTELIGÊNCIA: Se "car" não retornou nada antes, "carlos" também não vai retornar.
-        // Bloqueia a requisição no front-end para salvar processamento do backend.
         const termoMorto = this.ultimoTermoSemResultado();
         if (termoMorto && termo.startsWith(termoMorto)) {
           this.sugestoesClientes.set([]);
@@ -94,25 +84,22 @@ export class VendasComponent implements OnInit {
         return true;
       }),
       tap(() => {
-        // Só exibe "buscando..." se realmente passou pelos filtros e vai chamar a API
         this.buscandoClientes.set(true);
         this.exibirSugestoes.set(true);
       }),
       switchMap(termo => {
-        // switchMap cancela automaticamente a busca anterior se o usuário voltar a digitar
         return this.clienteService.buscarPorTermo(termo).pipe(
           map(res => ({ termo, clientes: res.data || [] })),
-          catchError(() => of({ termo, clientes: [] })) // Fallback silencioso
+          catchError(() => of({ termo, clientes: [] }))
         );
       }),
-      takeUntilDestroyed(this.destroyRef) // Evita memory leak ao sair da tela
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: ({ termo, clientes }) => {
         this.buscandoClientes.set(false);
         this.sugestoesClientes.set(clientes);
 
         if (clientes.length === 0) {
-          // Oculta sugestões e salva o termo na memória para bloquear as próximas letras
           this.exibirSugestoes.set(false);
           this.ultimoTermoSemResultado.set(termo);
         } else {
@@ -141,7 +128,6 @@ export class VendasComponent implements OnInit {
   esconderSugestoes(): void {
     setTimeout(() => this.exibirSugestoes.set(false), 200);
   }
-  // ==========================================
 
   formatarTelefone(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -274,7 +260,7 @@ export class VendasComponent implements OnInit {
     this.formaPagamento = 'DINHEIRO';
     this.percentualDesconto.set(null);
     this.quantidadeSelecionada = null;
-    this.ultimoTermoSemResultado.set(null); // Reseta a memória de buscas ao criar nova venda
+    this.ultimoTermoSemResultado.set(null);
     this.showSuccessModal.set(false);
     this.ultimoIdVenda = null;
   }

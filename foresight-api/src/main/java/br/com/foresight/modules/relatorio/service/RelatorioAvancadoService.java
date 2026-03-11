@@ -33,11 +33,8 @@ public class RelatorioAvancadoService {
 
         Specification<FluxoCaixa> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-
-            // 1. Blindagem Multi-Tenant OBRIGATÓRIA
             predicates.add(cb.equal(root.get("empresa").get("id"), tenantId));
 
-            // 2. Filtros Dinâmicos
             if (termo != null && !termo.isBlank()) {
                 String likePattern = "%" + termo.toLowerCase() + "%";
                 predicates.add(cb.like(cb.lower(root.get("descricao")), likePattern));
@@ -66,8 +63,6 @@ public class RelatorioAvancadoService {
                 ));
     }
 
-    // Nota: O método de exportar para PDF/Excel seria implementado aqui.
-    // Para simplificar esta entrega, deixaremos o esqueleto pronto.
     public byte[] exportarParaPdf(String termo, LocalDate dataInicio, LocalDate dataFim, String tipo, String categoria) {
         // ... Lógica de geração de arquivo em memória usando iText ou Apache POI
         return new byte[0]; // Retorno mockado

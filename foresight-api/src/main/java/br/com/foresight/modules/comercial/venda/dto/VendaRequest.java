@@ -27,7 +27,6 @@ public record VendaRequest(
 
         String dataPrevisao,
 
-        // NOVO: Campo de desconto percentual opcional com validação estrita
         @DecimalMin(value = "0.0", message = "O desconto não pode ser negativo")
         @DecimalMax(value = "100.0", message = "O desconto não pode ser maior que 100%")
         BigDecimal percentualDesconto

@@ -36,7 +36,6 @@ public class EmpresaService {
     public EmpresaDto criar(EmpresaRequest request) {
         Usuario usuarioLogado = getUsuarioLogadoSeguro();
 
-        // BLINDAGEM SaaS: Como findByDonoId retorna Optional, usamos isPresent()
         if (repository.findByDonoId(usuarioLogado.getId()).isPresent()) {
             throw new RegraNegocioException("Operação negada: Você já possui uma empresa cadastrada.");
         }
@@ -63,8 +62,6 @@ public class EmpresaService {
     @Transactional(readOnly = true)
     public List<EmpresaDto> listarMinhasEmpresas() {
         Usuario usuarioLogado = getUsuarioLogadoSeguro();
-
-        // Transforma o Optional em Stream para retornar a lista exigida pelo Controller
         return repository.findByDonoId(usuarioLogado.getId())
                 .stream()
                 .map(this::converterParaDto)

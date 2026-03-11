@@ -59,19 +59,17 @@ public class Empresa extends BaseAuditEntity {
     @Column(name = "prolabore_desejado", precision = 12, scale = 2)
     private BigDecimal proLaboreDesejado;
 
-    // === SOLUÇÃO DO ERRO AQUI ===
-    // Adicionamos o Status que o Backoffice usa
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private StatusEmpresa status;
 
-    @Version // DEFESA: Trava Otimista contra edições simultâneas
+    @Version
     private Long version;
 
     @PrePersist
     public void prePersist() {
         if (this.status == null) {
-            this.status = StatusEmpresa.ATIVA; // Garante que nunca seja nulo ao criar
+            this.status = StatusEmpresa.ATIVA;
         }
     }
 }

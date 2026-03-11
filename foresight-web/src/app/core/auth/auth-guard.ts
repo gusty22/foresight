@@ -7,7 +7,6 @@ export const authGuard: CanActivateFn = () => {
   const router = inject(Router);
 
   if (authService.estaLogado()) {
-    // BLINDAGEM: Se for Super Admin tentando entrar em rotas de cliente, redireciona
     if (authService.isSuperAdmin()) {
       router.navigateByUrl('/backoffice/dashboard');
       return false;

@@ -24,7 +24,6 @@ export interface DashboardResumo {
 @Injectable({ providedIn: 'root' })
 export class DashboardService {
   private http = inject(HttpClient);
-  // Padronização da URL Base
   private readonly API = 'http://localhost:8080/api/dashboard';
 
   obterResumo(): Observable<ApiResponse<DashboardResumo>> {

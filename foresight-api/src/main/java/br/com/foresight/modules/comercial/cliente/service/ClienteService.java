@@ -22,7 +22,6 @@ public class ClienteService {
     private final IClienteRepository clienteRepository;
     private final IEmpresaRepository empresaRepository;
 
-    // Utilitário de segurança: Pega o Tenant pelo Token JWT, impossível de ser burlado por URL
     private Empresa getEmpresaLogada() {
         Long tenantId = TenantContext.getCurrentTenant();
         if (tenantId == null) {
@@ -35,7 +34,7 @@ public class ClienteService {
     @Transactional
     public ClienteDto salvar(ClienteRequest request) {
         Cliente cliente = converterParaEntidade(request);
-        cliente.setEmpresa(getEmpresaLogada()); // Atribui segurança forçada
+        cliente.setEmpresa(getEmpresaLogada());
 
         if (cliente.getStatusCliente() == null || cliente.getStatusCliente().isBlank()) {
             cliente.setStatusCliente("ATIVO");
@@ -46,7 +45,6 @@ public class ClienteService {
 
     @Transactional
     public ClienteDto atualizar(Long id, ClienteRequest request) {
-        // Se tentar invadir o ID de um cliente que pertence a outro tenant, o Hibernate retorna Vazio
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new RegraNegocioException("Cliente não encontrado ou você não tem permissão para editá-lo."));
 
@@ -55,7 +53,6 @@ public class ClienteService {
     }
 
     public List<ClienteDto> listarPorEmpresa() {
-        // O Hibernate Filter restringe esse findAll apenas para a empresa logada. Perfeitamente escalável.
         return clienteRepository.findAll().stream()
                 .map(this::converterParaDto)
                 .collect(Collectors.toList());
@@ -63,7 +60,7 @@ public class ClienteService {
 
     public List<ClienteDto> buscarClientesAutocomplete(String termo) {
         if (termo == null || termo.length() < 2) {
-            return List.of(); // Evita queries pesadas se o usuário digitou só 1 letra
+            return List.of();
         }
         return clienteRepository.buscarPorTermoSeguro(termo).stream()
                 .map(this::converterParaDto)

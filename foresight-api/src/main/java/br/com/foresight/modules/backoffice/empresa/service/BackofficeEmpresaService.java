@@ -51,7 +51,6 @@ public class BackofficeEmpresaService {
         empresa.setStatus(request.novoStatus());
         empresaRepository.save(empresa);
 
-        // LOG DE AUDITORIA OBRIGATÓRIO EM SISTEMAS FINANCEIROS
         log.warn("AUDITORIA: Status da empresa '{}' (ID {}) alterado de {} para {}. Motivo: {}",
                 empresa.getNome(), empresa.getId(), statusAntigo, request.novoStatus(), request.motivo());
 
@@ -65,14 +64,10 @@ public class BackofficeEmpresaService {
 
         log.warn("AUDITORIA SEVERA: Um Super Admin solicitou acesso de suporte (Impersonation) para a empresa '{}' (ID {}).",
                 empresa.getNome(), empresa.getId());
-
-        // MOCK: Em produção, aqui você emitiria um JWT com Role de ADMIN atrelado a este TenantId
         return Map.of("token", "mock-jwt-impersonation-token-for-tenant-" + empresaId);
     }
 
     private EmpresaGlobalDto converterParaDto(Empresa e) {
-        // Como o modelo atual é 1:1 (Empresa pertence a um Usuário Dono),
-        // e não "Usuários pertencem a uma empresa", assumimos 1 ativo.
         long usuariosAtivos = 1L;
 
         return new EmpresaGlobalDto(

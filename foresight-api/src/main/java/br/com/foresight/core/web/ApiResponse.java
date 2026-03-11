@@ -20,7 +20,6 @@ public class ApiResponse<T> {
     private String message;
     private T data;
 
-    // Métodos utilitários estáticos para construir respostas limpas nos Controllers
     public static <T> ApiResponse<T> success(T data) {
         return ApiResponse.<T>builder().success(true).data(data).build();
     }

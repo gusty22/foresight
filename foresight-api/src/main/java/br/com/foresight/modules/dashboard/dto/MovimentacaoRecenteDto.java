@@ -8,5 +8,5 @@ public record MovimentacaoRecenteDto(
         String categoria,
         LocalDateTime data,
         BigDecimal valor,
-        String tipo // ENTRADA ou SAIDA
+        String tipo
 ) {}

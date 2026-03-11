@@ -1,8 +1,3 @@
-// ============================================================================
-// DTOs (Data Transfer Objects) - Domínio de Produtos
-// Padrão Enterprise: Isolado de Serviços e Componentes.
-// ============================================================================
-
 export interface ProdutoRequest {
   nome: string;
   categoria?: string | null;

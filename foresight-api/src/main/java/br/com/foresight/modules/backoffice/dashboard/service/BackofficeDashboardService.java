@@ -28,7 +28,6 @@ public class BackofficeDashboardService {
         long empresasSuspensas = totalEmpresas - empresasAtivas;
         long totalUsuarios = usuarioRepository.count();
 
-        // Cálculo Rápido (Exemplo base)
         BigDecimal ticketMedioMensal = new BigDecimal("99.90");
         BigDecimal faturamentoEstimado = ticketMedioMensal.multiply(BigDecimal.valueOf(empresasAtivas));
 

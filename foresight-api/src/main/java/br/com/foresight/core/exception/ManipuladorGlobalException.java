@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class ManipuladorGlobalException {
 
-    // Trata nossos erros de negócio customizados
     @ExceptionHandler(RegraNegocioException.class)
     public ResponseEntity<ApiResponse<Void>> tratarRegraNegocio(RegraNegocioException ex) {
         return ResponseEntity
@@ -20,7 +19,6 @@ public class ManipuladorGlobalException {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    // Trata erros de validação do Jakarta (@Valid, @NotBlank, etc)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> tratarErrosDeValidacao(MethodArgumentNotValidException ex) {
         String mensagensDeErro = ex.getBindingResult()
@@ -34,7 +32,6 @@ public class ManipuladorGlobalException {
                 .body(ApiResponse.error("Erro de validação: " + mensagensDeErro));
     }
 
-    // Fallback genérico para capturar qualquer outro erro interno não tratado (Evita stacktrace na tela)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> tratarErroGenerico(Exception ex) {
         // TODO: Enviar stacktrace para um sistema de log como DataDog/Sentry

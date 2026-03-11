@@ -39,7 +39,7 @@ public class Produto extends BaseTenantEntity {
     @Builder.Default
     private Integer estoqueMinimo = 5;
 
-    @Version // MÁGICA ENTERPRISE: Previne Race Condition na atualização de estoque/preço
+    @Version
     private Long version;
 
     public BigDecimal getLucroUnidade() {

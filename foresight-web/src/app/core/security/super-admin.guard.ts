@@ -13,8 +13,6 @@ export const superAdminGuard: CanActivateFn = () => {
 
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
-
-    // Alinhamento com o Backend: O Swagger mostrou que a chave é 'role'
     const role = payload.role || '';
     const isSuperAdmin = role === 'ROLE_SUPER_ADMIN';
 

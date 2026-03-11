@@ -1,12 +1,12 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FluxoCaixaService } from '../../services/fluxo-caixa.service';
-import { BrMaskPipe } from '../../../../shared/pipes/br-mask.pipe'; // Pipe Import
+import { BrMaskPipe } from '../../../../shared/pipes/br-mask.pipe';
 
 @Component({
   selector: 'app-fluxo-caixa',
   standalone: true,
-  imports: [CommonModule, BrMaskPipe], // Declaração do Pipe
+  imports: [CommonModule, BrMaskPipe],
   templateUrl: './fluxo-caixa.html',
   styleUrl: './fluxo-caixa.scss'
 })
@@ -23,7 +23,6 @@ export class FluxoCaixaComponent implements OnInit {
 
   carregarFluxo() {
     this.loading.set(true);
-    // Chamada isolada (sem buscar ID manual no Front)
     this.fluxoService.listarHistorico().subscribe({
       next: (res) => {
         const dados = res.data || [];

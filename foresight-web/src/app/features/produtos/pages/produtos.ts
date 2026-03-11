@@ -18,34 +18,25 @@ export class ProdutosComponent implements OnInit {
   private produtoService = inject(ProdutoService);
   private destroyRef = inject(DestroyRef);
 
-  // --- ESTADO REATIVO ---
   listaOriginal = signal<ProdutoDto[]>([]);
   loading = signal(false);
   salvando = signal(false);
-
-  // --- PAGINAÇÃO ---
   paginaAtual = signal(1);
   itensPorPagina = signal(10);
-
-  // --- CONTROLE DE MODAL E EDIÇÃO ---
   exibirModalEdicao = signal(false);
   produtoParaEdicaoId: number | null = null;
   exibicaoCusto = signal('');
   exibicaoVenda = signal('');
-
-  // --- CONTROLE DE FILTROS AVANÇADOS ---
   exibirFiltrosAvancados = signal(false);
   filtrosAtivos = signal({ termo: '', categoria: '', status: 'TODOS', limiteEstoque: null as number | null });
 
-  // 1. Formulário de Filtros (Seguro, sem ngModel)
   filtroForm: FormGroup = this.fb.group({
     termo: [''],
     categoria: [''],
-    status: ['TODOS'], // TODOS, OK, BAIXO
+    status: ['TODOS'],
     limiteEstoque: [null]
   });
 
-  // 2. Formulário de Cadastro/Edição de Produto
   produtoForm: FormGroup = this.fb.group({
     nome: ['', [Validators.required, Validators.maxLength(150)]],
     categoria: [''],
@@ -62,7 +53,6 @@ export class ProdutosComponent implements OnInit {
     this.escutarMudancasDeFiltro();
   }
 
-  // --- LÓGICA DE FILTRAGEM DE ALTA PERFORMANCE ---
   private escutarMudancasDeFiltro(): void {
     this.filtroForm.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -73,7 +63,7 @@ export class ProdutosComponent implements OnInit {
           status: valores.status || 'TODOS',
           limiteEstoque: valores.limiteEstoque
         });
-        this.paginaAtual.set(1); // Reseta a paginação ao filtrar
+        this.paginaAtual.set(1);
       });
   }
 
@@ -81,18 +71,11 @@ export class ProdutosComponent implements OnInit {
     const { termo, categoria, status, limiteEstoque } = this.filtrosAtivos();
 
     return this.listaOriginal().filter(p => {
-      // Regra 1: Nome
       const matchNome = p.nome.toLowerCase().includes(termo);
-
-      // Regra 2: Categoria
       const matchCat = p.categoria ? p.categoria.toLowerCase().includes(categoria) : true;
-
-      // Regra 3: Status de Escassez (Estoque Crítico)
       const limite = p.estoqueMinimo || 5;
       const isCritico = p.estoqueAtual <= limite;
       const matchStatus = status === 'TODOS' || (status === 'BAIXO' && isCritico) || (status === 'OK' && !isCritico);
-
-      // Regra 4: Limite de Quantidade
       const matchLimite = limiteEstoque === null || p.estoqueAtual <= limiteEstoque;
 
       return matchNome && matchCat && matchStatus && matchLimite;
@@ -110,7 +93,6 @@ export class ProdutosComponent implements OnInit {
     this.filtroForm.reset({ status: 'TODOS' });
   }
 
-  // --- INTEGRAÇÃO COM A API ---
   listarProdutos(): void {
     this.loading.set(true);
     this.produtoService.listar().subscribe({
@@ -133,8 +115,6 @@ export class ProdutosComponent implements OnInit {
 
     this.salvando.set(true);
     const payload = this.produtoForm.value;
-
-    // Fallback de segurança contra nulls maliciosos no backend
     payload.precoCusto = payload.precoCusto || 0;
     payload.precoVenda = payload.precoVenda || 0;
     payload.estoqueAtual = payload.estoqueAtual || 0;
@@ -169,7 +149,6 @@ export class ProdutosComponent implements OnInit {
     this.listarProdutos();
   }
 
-  // --- CONTROLE DE UI ---
   abrirNovoProduto(): void {
     this.produtoParaEdicaoId = null;
     this.produtoForm.reset({ estoqueMinimo: 5 });
@@ -204,7 +183,6 @@ export class ProdutosComponent implements OnInit {
     this.exibirFiltrosAvancados.set(!this.exibirFiltrosAvancados());
   }
 
-  // --- FORMATAÇÃO DE MOEDA NA DIGITAÇÃO ---
   formatarMoedaParaForm(event: Event, campo: 'precoCusto' | 'precoVenda'): void {
     const input = event.target as HTMLInputElement;
 

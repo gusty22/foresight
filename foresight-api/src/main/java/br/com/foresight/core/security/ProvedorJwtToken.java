@@ -15,7 +15,7 @@ public class ProvedorJwtToken {
     @Value("${api.security.token.secret}")
     private String segredo;
 
-    private static final String ISSUER = "foresight-api"; // Padronizado
+    private static final String ISSUER = "foresight-api";
 
     public String gerarToken(Usuario usuario, Long empresaId) {
         try {
@@ -26,7 +26,6 @@ public class ProvedorJwtToken {
                     .withClaim("role", usuario.getRole().name())
                     .withExpiresAt(LocalDateTime.now().plusHours(8).toInstant(ZoneOffset.of("-03:00")));
 
-            // Admin não recebe tenantId para o banco não tentar filtrar o "root"
             if (empresaId != null) {
                 builder.withClaim("tenantId", empresaId);
             }

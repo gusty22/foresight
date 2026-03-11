@@ -24,11 +24,11 @@ describe('AuditoriaComponent', () => {
       { id: 1, usuarioEmail: 'gustavo@teste.com', acao: 'CRIACAO', entidadeNome: 'Produto', dataHora: new Date() }
     ];
 
-    fixture.detectChanges(); // Dispara o ngOnInit
+    fixture.detectChanges();
 
     const req = httpMock.expectOne('http://localhost:8080/api/auditoria');
     expect(req.request.method).toBe('GET');
-    req.flush(mockLogs); // Simula o retorno da API
+    req.flush(mockLogs);
 
     fixture.detectChanges();
 

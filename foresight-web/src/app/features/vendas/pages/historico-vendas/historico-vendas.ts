@@ -6,7 +6,7 @@ import { BrMaskPipe } from '../../../../shared/pipes/br-mask.pipe';
 @Component({
   selector: 'app-historico-vendas',
   standalone: true,
-  imports: [CommonModule, BrMaskPipe], // Pipe incluído para uso no HTML
+  imports: [CommonModule, BrMaskPipe],
   templateUrl: './historico-vendas.html',
   styleUrls: ['./historico-vendas.scss']
 })

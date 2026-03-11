@@ -9,7 +9,6 @@ import { HttpClient } from '@angular/common/http';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './recuperar-senha.html',
-  // REMOVIDO: styles inline, pois agora usamos o CSS global do auth-wrapper
 })
 export class RecuperarSenhaComponent {
   private http = inject(HttpClient);
@@ -23,8 +22,6 @@ export class RecuperarSenhaComponent {
     if (!this.email) return;
 
     this.loading.set(true);
-
-    // Simulação de segurança (Delay para evitar enumeração de usuários por tempo de resposta)
     setTimeout(() => {
       this.sucesso.set(true);
       this.loading.set(false);

@@ -36,17 +36,13 @@ public class FiltroAutenticacaoJwt extends OncePerRequestFilter {
                 var tenantClaim = decodedJWT.getClaim("tenantId");
                 var roleClaim = decodedJWT.getClaim("role");
 
-                // 1. Injeta o Tenant apenas se existir (Usuários comuns)
                 if (!tenantClaim.isNull()) {
                     TenantContext.setCurrentTenant(tenantClaim.asLong());
                 }
 
-                // 2. Busca e injeta o objeto USUARIO completo no SecurityContext
-                // Fundamental para que o TenantInterceptor funcione corretamente
                 repository.findByEmail(email).ifPresent(usuario -> {
                     String roleName = roleClaim.isNull() ? usuario.getRole().name() : roleClaim.asString();
 
-                    // Normalização do prefixo para o Spring Security
                     if (!roleName.startsWith("ROLE_")) roleName = "ROLE_" + roleName;
 
                     var authorities = List.of(new SimpleGrantedAuthority(roleName));
@@ -59,7 +55,6 @@ public class FiltroAutenticacaoJwt extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
-            // Limpeza obrigatória para evitar vazamento entre threads do servidor
             TenantContext.clear();
         }
     }

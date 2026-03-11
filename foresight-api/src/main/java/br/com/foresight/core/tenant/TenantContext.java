@@ -1,9 +1,5 @@
 package br.com.foresight.core.tenant;
 
-/**
- * Gerenciador de contexto multi-tenant.
- * Utiliza ThreadLocal para garantir isolamento de dados entre diferentes requisições simultâneas.
- */
 public final class TenantContext {
 
     private static final ThreadLocal<Long> CURRENT_TENANT = new ThreadLocal<>();

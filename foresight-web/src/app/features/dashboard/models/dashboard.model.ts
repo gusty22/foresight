@@ -1,7 +1,7 @@
 export interface MovimentacaoRecente {
   descricao: string;
   categoria: string;
-  data: string; // ou Date, se você fizer parsing
+  data: string;
   valor: number;
   tipo: 'ENTRADA' | 'SAIDA';
 }

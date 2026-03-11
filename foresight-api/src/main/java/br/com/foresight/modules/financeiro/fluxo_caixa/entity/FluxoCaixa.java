@@ -37,8 +37,6 @@ public class FluxoCaixa extends BaseTenantEntity {
     @Column(name = "categoria_fluxo", length = 50, updatable = false)
     private CategoriaFluxo categoriaFluxo = CategoriaFluxo.EMPRESA;
 
-    // --- PROTEÇÕES FINANCEIRAS & AUDITORIA ---
-
     @Builder.Default
     @Column(nullable = false)
     private boolean estornado = false;
@@ -47,10 +45,10 @@ public class FluxoCaixa extends BaseTenantEntity {
     private Long referenciaEstornoId;
 
     @Column(name = "origem", length = 50, updatable = false)
-    private String origem; // Ex: VENDA, DESPESA, MANUAL
+    private String origem;
 
     @Column(name = "origem_id", updatable = false)
-    private Long origemId; // ID da transação que gerou este fluxo
+    private Long origemId;
 
     @Version
     private Long version;

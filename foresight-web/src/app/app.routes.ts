@@ -1,20 +1,12 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth-guard';
 import { superAdminGuard } from './core/security/super-admin.guard';
-
-// Importação estática para os Layouts (Estrutura Base)
 import { PublicLayoutComponent } from './layout/public/public-layout';
 import { PrivateLayoutComponent } from './layout/private/private-layout';
 import { SuperAdminLayoutComponent } from './layout/super-admin/super-admin-layout';
-import {InteligenciaPrecoComponent} from './features/produtos/pages/analise/inteligencia-preco';
 
 export const routes: Routes = [
-  // Redirecionamento inicial absoluto
   { path: '', redirectTo: 'login', pathMatch: 'full' },
-
-  // ==========================================
-  // 1. ROTAS PÚBLICAS (Login / Cadastro)
-  // ==========================================
   {
     path: '',
     component: PublicLayoutComponent,
@@ -37,9 +29,6 @@ export const routes: Routes = [
     ]
   },
 
-  // ==========================================
-  // 2. ROTAS MASTER (Backoffice Super Admin)
-  // ==========================================
   {
     path: 'backoffice',
     component: SuperAdminLayoutComponent,
@@ -60,15 +49,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/auditoria/pages/auditoria').then(m => m.AuditoriaComponent),
         title: 'Admin - Logs do Sistema'
       },
-      // Fallbacks internos
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: '**', redirectTo: 'dashboard' }
     ]
   },
 
-  // ==========================================
-  // 3. ROTAS TENANT (Sistema das Empresas)
-  // ==========================================
   {
     path: 'sistema',
     component: PrivateLayoutComponent,
@@ -93,13 +78,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/clientes/pages/clientes').then(m => m.ClientesComponent),
         title: 'Foresight - Clientes'
       },
-      // CORREÇÃO APLICADA AQUI: Mudando path de 'produtos' para 'estoque'
       {
         path: 'estoque',
         loadComponent: () => import('./features/produtos/pages/produtos').then(m => m.ProdutosComponent),
         title: 'Foresight - Estoque'
       },
-      // CORREÇÃO APLICADA AQUI: Mantendo a hierarquia se a rota base mudou
       {
         path: 'estoque/analise',
         loadComponent: () => import('./features/produtos/pages/analise/inteligencia-preco').then(m => m.InteligenciaPrecoComponent)
@@ -128,12 +111,9 @@ export const routes: Routes = [
         loadComponent: () => import('./features/configuracoes/pages/configuracoes').then(m => m.ConfiguracoesComponent),
         title: 'Foresight - Configurações'
       },
-      // Fallbacks internos
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: '**', redirectTo: 'dashboard' }
     ]
   },
-
-  // Fallback Global: Qualquer tentativa de acesso inválido volta para o login
   { path: '**', redirectTo: 'login' }
 ];

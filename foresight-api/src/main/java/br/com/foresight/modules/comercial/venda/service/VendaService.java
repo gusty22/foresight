@@ -59,7 +59,6 @@ public class VendaService {
                 .orElseThrow(() -> new RegraNegocioException("Empresa não encontrada no contexto de segurança."));
     }
 
-    // CREATE
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public VendaDto realizarVenda(VendaRequest request) {
         Empresa empresa = getEmpresaLogada();
@@ -83,7 +82,6 @@ public class VendaService {
         List<ItemVenda> itens = processarItensEEstoque(request, empresa, venda);
         venda.setItens(itens);
 
-        // --- CÁLCULO FINANCEIRO SEGURO (BRUTO -> DESCONTO -> LÍQUIDO) ---
         BigDecimal valorBruto = calcularTotal(itens);
         BigDecimal percentualDesc = request.percentualDesconto() != null ? request.percentualDesconto() : BigDecimal.ZERO;
 
@@ -106,7 +104,6 @@ public class VendaService {
         return converterParaDto(venda);
     }
 
-    // READ (List)
     @Transactional(readOnly = true)
     public List<VendaDto> listarHistorico() {
         Long tenantId = TenantContext.getCurrentTenant();
@@ -114,7 +111,6 @@ public class VendaService {
                 .map(this::converterParaDto).toList();
     }
 
-    // READ (Detail)
     @Transactional(readOnly = true)
     public VendaDto buscarDetalhesVenda(Long vendaId) {
         Long tenantId = TenantContext.getCurrentTenant();
@@ -123,7 +119,6 @@ public class VendaService {
         return converterParaDto(venda);
     }
 
-    // UPDATE: CONFIRMAR PAGAMENTO
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public VendaDto confirmarPagamento(Long vendaId) {
         Long tenantId = TenantContext.getCurrentTenant();
@@ -144,7 +139,6 @@ public class VendaService {
         return converterParaDto(venda);
     }
 
-    // DELETE / ESTORNO
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public void excluirOuEstornarVenda(Long vendaId) {
         Long tenantId = TenantContext.getCurrentTenant();
@@ -170,7 +164,6 @@ public class VendaService {
         vendaRepository.delete(venda);
     }
 
-    // PDF GENERATOR
     @Transactional(readOnly = true)
     public void gerarPdfVenda(Long vendaId, HttpServletResponse response) throws IOException {
         Long tenantId = TenantContext.getCurrentTenant();
@@ -212,7 +205,6 @@ public class VendaService {
         document.add(table);
         document.add(new Paragraph("\n"));
 
-        // 4. Seção Contábil (Subtotal, Desconto e Total)
         PdfPTable tableTotais = new PdfPTable(2);
         tableTotais.setWidthPercentage(100);
         tableTotais.setWidths(new float[]{8f, 2f});
@@ -228,8 +220,6 @@ public class VendaService {
         document.add(tableTotais);
         document.close();
     }
-
-    // --- MÉTODOS AUXILIARES ---
 
     private Cliente processarCliente(VendaRequest request, Empresa empresa) {
         if (request.cliente().documento() == null || request.cliente().documento().isBlank()) return null;
