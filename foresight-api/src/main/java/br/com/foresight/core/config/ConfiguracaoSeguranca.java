@@ -7,10 +7,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,12 +18,10 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Ativa @PreAuthorize em todo o projeto
 @RequiredArgsConstructor
 public class ConfiguracaoSeguranca {
 
@@ -33,40 +29,48 @@ public class ConfiguracaoSeguranca {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                // Configura CORS com origem e headers permitidos
+        http
+                // 1. ATIVA O CORS PARA O ANGULAR CONSEGUIR SE COMUNICAR
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                // Desativa CSRF para APIs REST stateless
-                .csrf(AbstractHttpConfigurer::disable)
-                // Sem sessão, JWT stateless
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Configura regras de autorização
-                .authorizeHttpRequests(req -> {
-                    // Permite autenticação sem token
-                    req.requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll();
-                    // Permite acesso à documentação Swagger
-                    req.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
-                    // Backoffice protegido para Super Admin
-                    req.requestMatchers("/api/backoffice/**").hasRole("SUPER_ADMIN");
-                    // Todas as outras rotas precisam de autenticação
-                    req.anyRequest().authenticated();
-                })
-                // Adiciona filtro JWT antes do filtro padrão do Spring Security
-                .addFilterBefore(filtroAutenticacaoJwt, UsernamePasswordAuthenticationFilter.class)
-                .build();
+
+                // 2. Desabilita o CSRF (Padrão para APIs REST com JWT)
+                .csrf(csrf -> csrf.disable())
+
+                // 3. Define a API como Stateless (Sem sessão de navegador)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // 4. Configuração das Rotas
+                .authorizeHttpRequests(authorize -> authorize
+                        // Libera o CORS Preflight (Requisições OPTIONS do navegador)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Libera as rotas de Autenticação e Documentação
+                        .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+
+                        // Protege o Backoffice (Apenas o dono do sistema acessa)
+                        .requestMatchers("/api/backoffice/**").hasRole("SUPER_ADMIN")
+
+                        // Qualquer outra rota precisa de autenticação (Token JWT válido)
+                        .anyRequest().authenticated()
+                )
+                // 5. Adiciona o filtro de JWT
+                .addFilterBefore(filtroAutenticacaoJwt, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
     }
 
+    // CONFIGURAÇÃO DETALHADA DO CORS (Libera o Frontend)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
+        // Em produção, trocamos o "*" pelo domínio real do seu frontend (ex: https://meusistema.com)
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-
         return source;
     }
 
