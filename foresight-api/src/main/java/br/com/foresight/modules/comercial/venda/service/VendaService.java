@@ -2,10 +2,15 @@ package br.com.foresight.modules.comercial.venda.service;
 
 import br.com.foresight.core.exception.RegraNegocioException;
 import br.com.foresight.core.tenant.TenantContext;
-import br.com.foresight.modules.comercial.produto.entity.Produto;
-import br.com.foresight.modules.comercial.produto.repository.IProdutoRepository;
 import br.com.foresight.modules.comercial.cliente.entity.Cliente;
 import br.com.foresight.modules.comercial.cliente.repository.IClienteRepository;
+import br.com.foresight.modules.comercial.investimento.entity.LoteEstoque;
+import br.com.foresight.modules.comercial.investimento.entity.RepasseInvestidor;
+import br.com.foresight.modules.comercial.investimento.repository.ILoteEstoqueRepository;
+import br.com.foresight.modules.comercial.investimento.repository.IRepasseInvestidorRepository;
+import br.com.foresight.modules.comercial.investimento.service.LoteEstoqueService;
+import br.com.foresight.modules.comercial.produto.entity.Produto;
+import br.com.foresight.modules.comercial.produto.repository.IProdutoRepository;
 import br.com.foresight.modules.comercial.venda.dto.ItemVendaDto;
 import br.com.foresight.modules.comercial.venda.dto.VendaDto;
 import br.com.foresight.modules.comercial.venda.dto.VendaRequest;
@@ -35,6 +40,7 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -47,6 +53,10 @@ public class VendaService {
     private final IProdutoRepository produtoRepository;
     private final IClienteRepository clienteRepository;
     private final FluxoCaixaService fluxoCaixaService;
+
+    private final ILoteEstoqueRepository loteEstoqueRepository;
+    private final IRepasseInvestidorRepository repasseInvestidorRepository;
+    private final LoteEstoqueService loteEstoqueService;
 
     private static final Font FONT_TITLE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16);
     private static final Font FONT_HEADER = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10);
@@ -64,6 +74,11 @@ public class VendaService {
         Empresa empresa = getEmpresaLogada();
         Cliente clienteBase = processarCliente(request, empresa);
 
+        BigDecimal valorBruto = calcularTotalPorRequest(request.itens());
+        BigDecimal percentualDesc = request.percentualDesconto() != null ? request.percentualDesconto() : BigDecimal.ZERO;
+        BigDecimal valorDesconto = valorBruto.multiply(percentualDesc).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+        BigDecimal valorLiquidoTotal = valorBruto.subtract(valorDesconto);
+
         LocalDate dataPrev = (request.dataPrevisao() != null && !request.dataPrevisao().isBlank())
                 ? LocalDate.parse(request.dataPrevisao()) : null;
 
@@ -76,32 +91,119 @@ public class VendaService {
                 .statusPagamento(request.status())
                 .dataPrevisaoPagamento(dataPrev)
                 .data(LocalDateTime.now())
+                .valorBruto(valorBruto)
+                .percentualDesconto(percentualDesc)
+                .valorDesconto(valorDesconto)
+                .valorTotal(valorLiquidoTotal)
                 .build();
         venda.setEmpresa(empresa);
 
+        // 1. Processamos os itens e baixamos o estoque (Mas AINDA NÃO criamos repasses aqui)
         List<ItemVenda> itens = processarItensEEstoque(request, empresa, venda);
         venda.setItens(itens);
 
-        BigDecimal valorBruto = calcularTotal(itens);
-        BigDecimal percentualDesc = request.percentualDesconto() != null ? request.percentualDesconto() : BigDecimal.ZERO;
+        // 2. Salvamos a venda. Aqui o Hibernate insere a Venda e os ItensVenda no banco e gera os IDs.
+        venda = vendaRepository.save(venda);
 
-        BigDecimal valorDesconto = valorBruto.multiply(percentualDesc)
-                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-
-        BigDecimal valorLiquidoTotal = valorBruto.subtract(valorDesconto);
-
-        venda.setValorBruto(valorBruto);
-        venda.setPercentualDesconto(percentualDesc);
-        venda.setValorDesconto(valorDesconto);
-        venda.setValorTotal(valorLiquidoTotal);
-
-        vendaRepository.save(venda);
+        // 3. AGORA a venda e os itens têm IDs reais. Podemos gerar e salvar os repasses dos investidores.
+        gerarRepassesInvestidores(venda, empresa);
 
         if ("PAGO".equalsIgnoreCase(request.status())) {
             registrarCaixa(empresa, venda, TipoMovimentacao.ENTRADA);
         }
 
         return converterParaDto(venda);
+    }
+
+    private BigDecimal calcularTotalPorRequest(List<ItemVendaDto> itens) {
+        return itens.stream()
+                .map(i -> i.precoUnitario().multiply(BigDecimal.valueOf(i.quantidade())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private List<ItemVenda> processarItensEEstoque(VendaRequest request, Empresa empresa, Venda venda) {
+        List<ItemVenda> itensDetalhadosPorLote = new ArrayList<>();
+
+        for (ItemVendaDto dto : request.itens()) {
+            Produto produto = produtoRepository.findById(dto.produtoId())
+                    .orElseThrow(() -> new RegraNegocioException("Produto não encontrado."));
+
+            if (!produto.getEmpresa().getId().equals(empresa.getId())) {
+                throw new RegraNegocioException("Acesso Negado: Produto pertence a outro tenant.");
+            }
+            if (produto.getEstoqueAtual() < dto.quantidade()) {
+                throw new RegraNegocioException("Estoque insuficiente para o produto: " + produto.getNome());
+            }
+
+            Integer quantidadeRestanteParaBaixar = dto.quantidade();
+            List<LoteEstoque> lotesDisponiveis = loteEstoqueRepository
+                    .findByProdutoIdAndQuantidadeDisponivelGreaterThanOrderByDataEntradaAsc(produto.getId(), 0);
+
+            for (LoteEstoque lote : lotesDisponiveis) {
+                if (quantidadeRestanteParaBaixar <= 0) break;
+
+                Integer qtdConsumidaDesteLote = Math.min(quantidadeRestanteParaBaixar, lote.getQuantidadeDisponivel());
+                loteEstoqueService.subtrairEstoqueDoLote(lote, qtdConsumidaDesteLote);
+                quantidadeRestanteParaBaixar -= qtdConsumidaDesteLote;
+
+                ItemVenda item = ItemVenda.builder()
+                        .venda(venda)
+                        .produto(produto)
+                        .lote(lote) // Relacionamento mapeado para rastreio
+                        .quantidade(qtdConsumidaDesteLote)
+                        .precoUnitario(dto.precoUnitario())
+                        .custoUnitarioLote(lote.getCustoUnitario())
+                        .build();
+
+                itensDetalhadosPorLote.add(item);
+            }
+
+            if (quantidadeRestanteParaBaixar > 0) {
+                throw new RegraNegocioException("Inconsistência sistêmica: Estoque atual maior que os Lotes disponíveis no produto " + produto.getNome());
+            }
+
+            produto.setEstoqueAtual(produto.getEstoqueAtual() - dto.quantidade());
+            produtoRepository.save(produto);
+        }
+        return itensDetalhadosPorLote;
+    }
+
+    // ====================================================================================
+    // NOVO MÉTODO: Isola a criação dos repasses garantindo que os itens tenham ID do banco
+    // ====================================================================================
+    private void gerarRepassesInvestidores(Venda venda, Empresa empresa) {
+        List<RepasseInvestidor> repasses = new ArrayList<>();
+
+        for (ItemVenda item : venda.getItens()) {
+            LoteEstoque lote = item.getLote();
+
+            if (lote != null && lote.getInvestidor() != null && lote.getPercentualLucroInvestidor().compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal faturamentoParte = item.getPrecoUnitario().multiply(BigDecimal.valueOf(item.getQuantidade()));
+                BigDecimal custoParte = item.getCustoUnitarioLote().multiply(BigDecimal.valueOf(item.getQuantidade()));
+                BigDecimal lucroLiquido = faturamentoParte.subtract(custoParte);
+
+                if (lucroLiquido.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal valorRepasse = lucroLiquido.multiply(lote.getPercentualLucroInvestidor())
+                            .divide(new BigDecimal("100"), 2, RoundingMode.HALF_EVEN);
+
+                    RepasseInvestidor repasse = RepasseInvestidor.builder()
+                            .investidor(lote.getInvestidor())
+                            .venda(venda)
+                            .itemVenda(item) // Aqui o itemVenda JÁ TEM o ID gerado pelo banco!
+                            .valorLucroTotal(lucroLiquido)
+                            .valorRepasse(valorRepasse)
+                            .status("PENDENTE")
+                            .build();
+                    repasse.setEmpresa(empresa);
+
+                    repasses.add(repasse);
+                }
+            }
+        }
+
+        if (!repasses.isEmpty()) {
+            repasseInvestidorRepository.saveAll(repasses);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -159,8 +261,16 @@ public class VendaService {
             Produto produto = item.getProduto();
             produto.setEstoqueAtual(produto.getEstoqueAtual() + item.getQuantidade());
             produtoRepository.save(produto);
-        }
 
+            LoteEstoque lote = item.getLote();
+            if (lote != null) {
+                lote.setQuantidadeDisponivel(lote.getQuantidadeDisponivel() + item.getQuantidade());
+                if ("FINALIZADO".equals(lote.getStatus())) {
+                    lote.setStatus("ABERTO");
+                }
+                loteEstoqueRepository.save(lote);
+            }
+        }
         vendaRepository.delete(venda);
     }
 
@@ -241,38 +351,11 @@ public class VendaService {
         return clienteRepository.save(clienteBase);
     }
 
-    private List<ItemVenda> processarItensEEstoque(VendaRequest request, Empresa empresa, Venda venda) {
-        return request.itens().stream().map(dto -> {
-            Produto produto = produtoRepository.findById(dto.produtoId())
-                    .orElseThrow(() -> new RegraNegocioException("Produto não encontrado."));
-
-            if (!produto.getEmpresa().getId().equals(empresa.getId())) {
-                throw new RegraNegocioException("Acesso Negado: Produto pertence a outro tenant.");
-            }
-            if (produto.getEstoqueAtual() < dto.quantidade()) {
-                throw new RegraNegocioException("Estoque insuficiente para o produto: " + produto.getNome());
-            }
-
-            produto.setEstoqueAtual(produto.getEstoqueAtual() - dto.quantidade());
-            produtoRepository.save(produto);
-
-            return ItemVenda.builder()
-                    .venda(venda).produto(produto).quantidade(dto.quantidade())
-                    .precoUnitario(dto.precoUnitario()).build();
-        }).toList();
-    }
-
-    private BigDecimal calcularTotal(List<ItemVenda> itens) {
-        return itens.stream()
-                .map(i -> i.getPrecoUnitario().multiply(BigDecimal.valueOf(i.getQuantidade())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
     private void registrarCaixa(Empresa empresa, Venda venda, TipoMovimentacao tipo) {
         fluxoCaixaService.registrarMovimentacaoInterna(
                 empresa,
                 (tipo == TipoMovimentacao.ENTRADA ? "Recebimento Venda #" : "Estorno Venda #") + venda.getId() + " - " + venda.getCliente(),
-                venda.getValorTotal(), // Usa sempre o valor líquido real (com desconto) para o financeiro
+                venda.getValorTotal(),
                 tipo,
                 CategoriaFluxo.EMPRESA
         );
@@ -301,8 +384,13 @@ public class VendaService {
         List<ItemVendaDto> itensDto = null;
         if (v.getItens() != null) {
             itensDto = v.getItens().stream().map(item -> new ItemVendaDto(
-                    item.getProduto().getId(), item.getProduto().getNome(),
-                    item.getQuantidade(), item.getPrecoUnitario())).toList();
+                    item.getProduto().getId(),
+                    item.getProduto().getNome(),
+                    item.getQuantidade(),
+                    item.getPrecoUnitario(),
+                    item.getLote() != null ? item.getLote().getId() : null,
+                    item.getCustoUnitarioLote()
+            )).toList();
         }
         return new VendaDto(
                 v.getId(),

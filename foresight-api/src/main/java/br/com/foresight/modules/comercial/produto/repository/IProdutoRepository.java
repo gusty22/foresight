@@ -9,7 +9,11 @@ import java.util.Optional;
 
 @Repository
 public interface IProdutoRepository extends JpaRepository<Produto, Long> {
+
     List<Produto> findAllByEmpresaId(Long empresaId);
 
     Optional<Produto> findByIdAndEmpresaId(Long id, Long empresaId);
+
+    // NOVO: Essencial para a funcionalidade do Tablet bipar o produto e já lançar no carrinho
+    Optional<Produto> findByEmpresaIdAndCodigoBarras(Long empresaId, String codigoBarras);
 }

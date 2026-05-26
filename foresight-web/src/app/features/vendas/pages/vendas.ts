@@ -41,6 +41,11 @@ export class VendasComponent implements OnInit {
 
   quantidadeSelecionada: number | null = null;
   termoBuscaProduto = '';
+
+  // Variáveis para o leitor de código de barras
+  codigoBarrasInput = '';
+  buscandoCodigo = signal(false);
+
   termoBuscaCliente = new Subject<string>();
   sugestoesClientes = signal<any[]>([]);
   buscandoClientes = signal(false);
@@ -68,7 +73,7 @@ export class VendasComponent implements OnInit {
         if (termo.length < 3) {
           this.sugestoesClientes.set([]);
           this.exibirSugestoes.set(false);
-          this.ultimoTermoSemResultado.set(null); // Reseta a memória de falhas
+          this.ultimoTermoSemResultado.set(null);
           this.buscandoClientes.set(false);
           return false;
         }
@@ -103,7 +108,6 @@ export class VendasComponent implements OnInit {
           this.exibirSugestoes.set(false);
           this.ultimoTermoSemResultado.set(termo);
         } else {
-          // Exibe os clientes e limpa a memória de falhas
           this.exibirSugestoes.set(true);
           this.ultimoTermoSemResultado.set(null);
         }
@@ -160,6 +164,28 @@ export class VendasComponent implements OnInit {
   selecionarProduto(produto: any): void {
     this.produtoSelecionado = produto;
     this.quantidadeSelecionada = null;
+  }
+
+  // NOVO: Método para processar a busca por código de barras e já lançar no carrinho
+  escanearCodigoDeBarras(): void {
+    if (!this.codigoBarrasInput.trim()) return;
+
+    this.buscandoCodigo.set(true);
+    const codigo = this.codigoBarrasInput.trim();
+    this.codigoBarrasInput = ''; // Limpa rápido para estar pronto para o próximo bipe
+
+    this.http.get<any>(`http://localhost:8080/api/produtos/barcode/${codigo}`).subscribe({
+      next: (res) => {
+        this.buscandoCodigo.set(false);
+        this.produtoSelecionado = res.data;
+        this.quantidadeSelecionada = 1; // Leitor de código de barras normalmente adiciona 1 unidade por bipe
+        this.adicionarAoCarrinho();
+      },
+      error: (err) => {
+        this.buscandoCodigo.set(false);
+        alert(err.error?.message || 'Produto não encontrado pelo código.');
+      }
+    });
   }
 
   adicionarAoCarrinho(): void {

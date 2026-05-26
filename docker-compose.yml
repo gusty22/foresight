@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # 1. Banco de Dados
   db:
@@ -17,7 +19,9 @@ services:
     volumes:
       - foresight_data:/var/lib/postgresql/data
     networks:
-      - foresight_net
+      foresight_net:
+        aliases:
+          - db # <-- Garante que a rede interna reconheça o nome "db"
 
   # 2. Backend (Spring Boot)
   backend:
@@ -26,18 +30,16 @@ services:
       dockerfile: Dockerfile
     container_name: foresight_api
     ports:
-      # MUDANÇA AQUI: Expõe a API do Docker na porta 8081.
-      # Isso deixa a porta 8080 da sua máquina livre para o IntelliJ usar!
+      # CORREÇÃO AQUI: Expõe a API do Docker na porta 8081.
+      # Deixa a 8080 livre para você dar o Play pelo IntelliJ sem conflitos!
       - "8081:8080"
     environment:
-      # Injeta essas variáveis no application.properties do Java dinamicamente
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/foresight_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     depends_on:
       db:
-        condition: service_healthy # Aguarda o Postgres ficar pronto para iniciar o Java
+        condition: service_healthy # Aguarda o Postgres ficar 100% pronto
     networks:
       - foresight_net
 
@@ -48,7 +50,7 @@ services:
       dockerfile: Dockerfile
     container_name: foresight_web
     ports:
-      - "4200:80" # Mapeia a porta 80 do Nginx (container) para a 4200 (sua máquina)
+      - "4200:80" # Mapeia a porta 80 do Nginx (container) para a 4200
     depends_on:
       - backend
     networks:

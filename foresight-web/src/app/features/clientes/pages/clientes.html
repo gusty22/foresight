@@ -110,6 +110,11 @@
       <form [formGroup]="clienteForm" (ngSubmit)="salvarCliente()">
         <div class="modal-body p-4 pt-0">
 
+          <div class="alert alert-danger d-flex align-items-center mt-3" *ngIf="mensagemErro()">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <div>{{ mensagemErro() }}</div>
+          </div>
+
           <ul class="nav nav-tabs nav-fill mb-4 mt-3" id="clienteTabs" role="tablist">
             <li class="nav-item" role="presentation">
               <button class="nav-link active fw-bold text-dark" id="dados-tab" data-bs-toggle="tab" data-bs-target="#dados" type="button" role="tab">Dados e Contato</button>
@@ -133,29 +138,52 @@
                     <option value="PJ">Jurídica</option>
                   </select>
                 </div>
+
                 <div class="col-md-9">
                   <label class="form-label small fw-bold">Nome Completo / Razão Social *</label>
                   <input type="text" formControlName="nome" class="form-control" [ngClass]="{'is-invalid': f['nome'].invalid && f['nome'].touched}">
+                  <div class="invalid-feedback" *ngIf="f['nome'].errors?.['required']">Nome é obrigatório.</div>
+                  <div class="invalid-feedback" *ngIf="f['nome'].errors?.['pattern']">O nome não deve conter números.</div>
                 </div>
-                <div class="col-md-6">
+
+                <div class="col-md-6 position-relative">
                   <label class="form-label small fw-bold">{{ f['tipoCliente'].value === 'PF' ? 'CPF' : 'CNPJ' }}</label>
-                  <input type="text" formControlName="documento" class="form-control" (input)="aplicarMascaraDocumento($event)">
+                  <input type="text" formControlName="documento" [brMask]="tipoDocumentoMask()" class="form-control" [ngClass]="{'is-invalid': f['documento'].invalid && f['documento'].touched, 'is-valid': f['documento'].valid && f['documento'].value}">
+
+                  <span *ngIf="buscandoCnpj() || f['documento'].pending" class="spinner-border spinner-border-sm text-primary position-absolute" style="right: 15px; top: 38px;" role="status"></span>
+
+                  <div class="invalid-feedback" *ngIf="f['documento'].errors?.['documentoInvalido'] || f['documento'].errors?.['documentoInvalidoApi']">
+                    {{ f['tipoCliente'].value === 'PF' ? 'CPF' : 'CNPJ' }} inválido ou com restrições.
+                  </div>
+                  <div class="invalid-feedback" *ngIf="f['documento'].errors?.['required']">
+                    {{ f['tipoCliente'].value === 'PF' ? 'CPF' : 'CNPJ' }} é obrigatório.
+                  </div>
                 </div>
+
                 <div class="col-md-6">
                   <label class="form-label small fw-bold">{{ f['tipoCliente'].value === 'PF' ? 'RG' : 'Inscrição Estadual' }}</label>
-                  <input type="text" formControlName="rgInscricaoEstadual" class="form-control">
+                  <input type="text" formControlName="rgInscricaoEstadual" brMask="rg" class="form-control">
                 </div>
+
                 <div class="col-md-6">
                   <label class="form-label small fw-bold text-success">WhatsApp *</label>
-                  <input type="text" formControlName="telefone" class="form-control" (input)="aplicarMascaraTelefone($event, 'telefone')">
+                  <input type="text" formControlName="telefone" brMask="tel" class="form-control" [ngClass]="{'is-invalid': f['telefone'].invalid && f['telefone'].touched}">
+                  <div class="invalid-feedback">Telefone inválido ou incompleto. Ex: (00) 00000-0000</div>
                 </div>
+
                 <div class="col-md-6">
                   <label class="form-label small fw-bold">Telefone Fixo / Recado</label>
-                  <input type="text" formControlName="telefoneAlternativo" class="form-control" (input)="aplicarMascaraTelefone($event, 'telefoneAlternativo')">
+                  <input type="text" formControlName="telefoneAlternativo" brMask="tel" class="form-control">
                 </div>
-                <div class="col-md-12">
+
+                <div class="col-md-12 position-relative">
                   <label class="form-label small fw-bold">E-mail</label>
-                  <input type="email" formControlName="email" class="form-control" [ngClass]="{'is-invalid': f['email'].invalid && f['email'].touched}">
+                  <input type="email" formControlName="email" class="form-control" [ngClass]="{'is-invalid': f['email'].invalid && f['email'].touched, 'is-valid': f['email'].valid && f['email'].value}">
+
+                  <span *ngIf="f['email'].pending" class="spinner-border spinner-border-sm text-primary position-absolute" style="right: 15px; top: 38px;" role="status"></span>
+
+                  <div class="invalid-feedback" *ngIf="f['email'].errors?.['emailInvalidoApi']">Endereço de e-mail temporário, bloqueado ou inexistente.</div>
+                  <div class="invalid-feedback" *ngIf="f['email'].errors?.['email']">Formato de e-mail inválido.</div>
                 </div>
               </div>
             </div>
@@ -167,7 +195,7 @@
                     CEP
                     <span *ngIf="buscandoCep()" class="spinner-border spinner-border-sm text-primary" role="status"></span>
                   </label>
-                  <input type="text" formControlName="cep" class="form-control" (input)="aplicarMascaraCep($event)" placeholder="00000-000">
+                  <input type="text" formControlName="cep" brMask="cep" class="form-control" [ngClass]="{'is-invalid': f['cep'].invalid && f['cep'].touched}">
                 </div>
                 <div class="col-md-8">
                   <label class="form-label small fw-bold">Logradouro</label>
@@ -191,7 +219,7 @@
                 </div>
                 <div class="col-md-2">
                   <label class="form-label small fw-bold">UF</label>
-                  <input type="text" formControlName="estado" class="form-control text-uppercase" maxlength="2" [readonly]="buscandoCep()">
+                  <input type="text" formControlName="estado" class="form-control text-uppercase" maxlength="2" [readonly]="buscandoCep()" [ngClass]="{'is-invalid': f['estado'].invalid && f['estado'].touched}">
                 </div>
               </div>
             </div>
@@ -201,9 +229,9 @@
                 <div class="col-md-6">
                   <label class="form-label small fw-bold">Status no Sistema</label>
                   <select formControlName="statusCliente" class="form-select font-monospace">
-                    <option value="ATIVO" class="text-success">✅ ATIVO (Liberado)</option>
-                    <option value="INATIVO" class="text-secondary">⏸ INATIVO (Sem Compras)</option>
-                    <option value="INADIMPLENTE" class="text-danger">⛔ INADIMPLENTE (Bloqueado)</option>
+                    <option value="ATIVO" class="text-success">ATIVO (Liberado)</option>
+                    <option value="INATIVO" class="text-secondary">INATIVO (Sem Compras)</option>
+                    <option value="INADIMPLENTE" class="text-danger">INADIMPLENTE (Bloqueado)</option>
                   </select>
                 </div>
                 <div class="col-md-6">
@@ -211,8 +239,8 @@
                   <input type="date" formControlName="dataNascimento" class="form-control">
                 </div>
                 <div class="col-md-12">
-                  <label class="form-label small fw-bold">Anotações Internas (Segredo da Empresa)</label>
-                  <textarea formControlName="observacoes" class="form-control" rows="3" placeholder="Ex: Cliente prefere contato via WhatsApp..."></textarea>
+                  <label class="form-label small fw-bold">Anotações Internas</label>
+                  <textarea formControlName="observacoes" class="form-control" rows="3"></textarea>
                 </div>
               </div>
             </div>

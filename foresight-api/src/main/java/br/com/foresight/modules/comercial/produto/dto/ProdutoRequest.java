@@ -4,7 +4,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
-
 import java.math.BigDecimal;
 
 public record ProdutoRequest(
@@ -12,8 +11,14 @@ public record ProdutoRequest(
         @Size(max = 150, message = "O nome não pode exceder 150 caracteres")
         String nome,
 
-        @Size(max = 100, message = "A categoria não pode exceder 100 caracteres")
-        String categoria,
+        @Size(max = 50, message = "Código de barras inválido")
+        String codigoBarras,
+
+        @Size(max = 500, message = "URL da imagem muito longa")
+        String imagemUrl,
+
+        Long categoriaId,
+        Long fornecedorId,
 
         @NotNull(message = "O preço de custo é obrigatório")
         @PositiveOrZero(message = "O preço de custo não pode ser negativo")
@@ -28,5 +33,8 @@ public record ProdutoRequest(
 
         @NotNull(message = "O limite de estoque mínimo é obrigatório")
         @PositiveOrZero(message = "O estoque mínimo não pode ser negativo")
-        Integer estoqueMinimo
+        Integer estoqueMinimo,
+
+        Long investidorId,
+        BigDecimal percentualLucroInvestidor
 ) {}

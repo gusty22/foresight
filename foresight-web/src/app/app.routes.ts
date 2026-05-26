@@ -111,6 +111,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/configuracoes/pages/configuracoes').then(m => m.ConfiguracoesComponent),
         title: 'Foresight - Configurações'
       },
+      {
+        path: 'investidores',
+        loadComponent: () => import('./features/investimentos/pages/investidores/investidores').then(m => m.InvestidoresComponent),
+        title: 'Foresight - Sócios'
+      },
+      {
+        path: 'lotes',
+        loadComponent: () => import('./features/investimentos/pages/lotes-estoque/lotes-estoque').then(m => m.LotesEstoqueComponent),
+        title: 'Foresight - Estoque Financiado'
+      },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: '**', redirectTo: 'dashboard' }
     ]

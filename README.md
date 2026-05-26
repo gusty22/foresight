@@ -1,17 +1,33 @@
-# Foresight - Business Intelligence & ERP
+# Foresight API & Web 🚀
 
-Sistema SaaS Multi-Tenant para gestão de clínicas e estabelecimentos comerciais, contemplando controle de vendas (PDV), estoque, fluxo de caixa e geração de PDFs.
+Sistema de Business Intelligence e Gestão Comercial.
 
-## 🚀 Tecnologias Utilizadas
-* **Backend:** Java 17, Spring Boot 3, Spring Security (JWT), Hibernate/JPA, OpenPDF.
-* **Frontend:** Angular 17+, Bootstrap 5, RxJS.
-* **Banco de Dados:** PostgreSQL 15.
-* **Infraestrutura:** Docker e Docker Compose (Arquitetura Multi-stage).
+## 🛠️ Pré-requisitos
+Para rodar este projeto, você precisará ter instalado na sua máquina:
+* **Java 17**
+* **Node.js 20+** (Para o frontend Angular)
+* **Docker Desktop** (Para subir o banco de dados PostgreSQL automaticamente)
 
-## 🛠️ Como rodar o projeto (Via Docker - Recomendado)
+## ⚙️ Como rodar o projeto localmente
 
-Você não precisa ter o Java ou o Node instalados na sua máquina. Basta ter o [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado.
+### 1. Banco de Dados
+Não é necessário instalar o PostgreSQL. Apenas mantenha o seu Docker aberto. O Spring Boot fará o start automático dos containers definidos no `docker-compose.yml`.
 
-1. Clone o repositório:
-   ```bash
-   git clone https://github.com/gusty22/foresight.git
+### 2. Rodando o Backend (Spring Boot)
+Abra o terminal na pasta do backend e utilize o Maven Wrapper:
+
+No Windows:
+> ./mvnw.cmd spring-boot:run
+
+No Mac/Linux:
+> ./mvnw spring-boot:run
+
+A API estará disponível em: `http://localhost:8080`
+
+### 3. Rodando o Frontend (Angular)
+Abra um novo terminal na pasta do frontend:
+
+> npm install
+> npm start
+
+Acesse a aplicação em: `http://localhost:4200`

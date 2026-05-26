@@ -8,7 +8,7 @@ import { ClienteDto, ClienteRequest, ViaCepResponse } from '../models/cliente.mo
 export class ClienteService {
   private http = inject(HttpClient);
   // Em produção, o host (http://localhost:8080) deve ser injetado por um HttpInterceptor
-  private readonly API = '/api/clientes';
+  private readonly API = 'http://localhost:8080/api/clientes';
 
   buscarPorTermo(termo: string): Observable<ApiResponse<ClienteDto[]>> {
     return this.http.get<ApiResponse<ClienteDto[]>>(`${this.API}/buscar`, {

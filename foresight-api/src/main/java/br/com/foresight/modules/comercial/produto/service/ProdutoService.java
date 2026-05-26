@@ -2,6 +2,11 @@ package br.com.foresight.modules.comercial.produto.service;
 
 import br.com.foresight.core.exception.RegraNegocioException;
 import br.com.foresight.core.tenant.TenantContext;
+import br.com.foresight.modules.comercial.apoio.repository.ICategoriaProdutoRepository;
+import br.com.foresight.modules.comercial.apoio.repository.IFornecedorRepository;
+import br.com.foresight.modules.comercial.investimento.entity.LoteEstoque;
+import br.com.foresight.modules.comercial.investimento.repository.ILoteEstoqueRepository;
+import br.com.foresight.modules.comercial.investimento.service.LoteEstoqueService;
 import br.com.foresight.modules.comercial.produto.dto.ProdutoDto;
 import br.com.foresight.modules.comercial.produto.dto.ProdutoRequest;
 import br.com.foresight.modules.comercial.produto.entity.Produto;
@@ -22,6 +27,10 @@ public class ProdutoService {
 
     private final IProdutoRepository produtoRepository;
     private final IEmpresaRepository empresaRepository;
+    private final ICategoriaProdutoRepository categoriaRepository;
+    private final IFornecedorRepository fornecedorRepository;
+    private final ILoteEstoqueRepository loteEstoqueRepository;
+    private final LoteEstoqueService loteEstoqueService;
 
     private Long getTenantIdSeguro() {
         Long tenantId = TenantContext.getCurrentTenant();
@@ -45,18 +54,46 @@ public class ProdutoService {
     public ProdutoDto criar(ProdutoRequest dados) {
         Empresa empresa = getEmpresaLogada();
 
+        if (dados.codigoBarras() != null && !dados.codigoBarras().isBlank()) {
+            boolean existe = produtoRepository.findByEmpresaIdAndCodigoBarras(empresa.getId(), dados.codigoBarras()).isPresent();
+            if (existe) throw new RegraNegocioException("Este código de barras já está cadastrado em outro produto.");
+        }
+
         Produto produto = Produto.builder()
                 .nome(dados.nome())
-                .categoria(dados.categoria())
+                .codigoBarras(dados.codigoBarras())
+                .imagemUrl(dados.imagemUrl())
                 .precoCusto(dados.precoCusto())
                 .precoVenda(dados.precoVenda())
                 .estoqueAtual(dados.estoqueAtual() != null ? dados.estoqueAtual() : 0)
                 .estoqueMinimo(dados.estoqueMinimo() != null ? dados.estoqueMinimo() : 5)
                 .build();
 
-        produto.setEmpresa(empresa);
+        if (dados.categoriaId() != null) {
+            produto.setCategoria(categoriaRepository.findById(dados.categoriaId()).orElse(null));
+        }
+        if (dados.fornecedorId() != null) {
+            produto.setFornecedor(fornecedorRepository.findById(dados.fornecedorId()).orElse(null));
+        }
 
-        return converterParaDto(produtoRepository.save(produto));
+        produto.setEmpresa(empresa);
+        Produto salvo = produtoRepository.save(produto);
+
+        // Criação do lote inicial com base no estoque atual
+        if (salvo.getEstoqueAtual() > 0) {
+            if (dados.investidorId() != null && dados.percentualLucroInvestidor() != null) {
+                loteEstoqueService.criarLoteInvestidor(
+                        salvo,
+                        salvo.getEstoqueAtual(),
+                        dados.investidorId(),
+                        dados.percentualLucroInvestidor()
+                );
+            } else {
+                loteEstoqueService.criarLoteInicialProprio(salvo, salvo.getEstoqueAtual());
+            }
+        }
+
+        return converterParaDto(salvo);
     }
 
     @Transactional(readOnly = true)
@@ -68,7 +105,13 @@ public class ProdutoService {
 
     @Transactional(readOnly = true)
     public ProdutoDto buscarPorId(Long id) {
-        Produto produto = buscarProdutoDaEmpresa(id, getTenantIdSeguro());
+        return converterParaDto(buscarProdutoDaEmpresa(id, getTenantIdSeguro()));
+    }
+
+    @Transactional(readOnly = true)
+    public ProdutoDto buscarPorCodigoBarras(String codigoBarras) {
+        Produto produto = produtoRepository.findByEmpresaIdAndCodigoBarras(getTenantIdSeguro(), codigoBarras)
+                .orElseThrow(() -> new RegraNegocioException("Produto não encontrado para este código de barras."));
         return converterParaDto(produto);
     }
 
@@ -76,12 +119,32 @@ public class ProdutoService {
     public ProdutoDto atualizar(Long id, ProdutoRequest dados) {
         Produto produto = buscarProdutoDaEmpresa(id, getTenantIdSeguro());
 
+        if (dados.codigoBarras() != null && !dados.codigoBarras().equals(produto.getCodigoBarras())) {
+            boolean existe = produtoRepository.findByEmpresaIdAndCodigoBarras(produto.getEmpresa().getId(), dados.codigoBarras()).isPresent();
+            if (existe) throw new RegraNegocioException("Este código de barras já está cadastrado em outro produto.");
+        }
+
         produto.setNome(dados.nome());
-        produto.setCategoria(dados.categoria());
+        produto.setCodigoBarras(dados.codigoBarras());
+        produto.setImagemUrl(dados.imagemUrl());
         produto.setPrecoCusto(dados.precoCusto());
         produto.setPrecoVenda(dados.precoVenda());
         produto.setEstoqueAtual(dados.estoqueAtual() != null ? dados.estoqueAtual() : 0);
         produto.setEstoqueMinimo(dados.estoqueMinimo() != null ? dados.estoqueMinimo() : 5);
+
+        if (dados.categoriaId() != null) {
+            produto.setCategoria(categoriaRepository.findById(dados.categoriaId()).orElse(null));
+        } else {
+            produto.setCategoria(null);
+        }
+
+        if (dados.fornecedorId() != null) {
+            produto.setFornecedor(fornecedorRepository.findById(dados.fornecedorId()).orElse(null));
+        } else {
+            produto.setFornecedor(null);
+        }
+
+        // Não altera os campos de investidor (lote já existente)
 
         return converterParaDto(produtoRepository.save(produto));
     }
@@ -103,17 +166,36 @@ public class ProdutoService {
             alerta = "CRITICO";
         }
 
+        // Busca o primeiro lote (o mais antigo) para obter dados do investidor
+        LoteEstoque loteInicial = loteEstoqueRepository.findFirstByProdutoOrderByDataEntradaAsc(p).orElse(null);
+        Long investidorId = null;
+        String investidorNome = null;
+        BigDecimal percentual = null;
+        if (loteInicial != null && loteInicial.getInvestidor() != null) {
+            investidorId = loteInicial.getInvestidor().getId();
+            investidorNome = loteInicial.getInvestidor().getNome();
+            percentual = loteInicial.getPercentualLucroInvestidor();
+        }
+
         return new ProdutoDto(
                 p.getId(),
                 p.getNome(),
-                p.getCategoria(),
+                p.getCodigoBarras(),
+                p.getImagemUrl(),
+                p.getCategoria() != null ? p.getCategoria().getId() : null,
+                p.getCategoria() != null ? p.getCategoria().getNome() : null,
+                p.getFornecedor() != null ? p.getFornecedor().getId() : null,
+                p.getFornecedor() != null ? p.getFornecedor().getNome() : null,
                 p.getPrecoCusto(),
                 p.getPrecoVenda(),
                 p.getEstoqueAtual(),
                 p.getEstoqueMinimo(),
                 margem,
                 lucro,
-                alerta
+                alerta,
+                investidorId,
+                investidorNome,
+                percentual
         );
     }
 }

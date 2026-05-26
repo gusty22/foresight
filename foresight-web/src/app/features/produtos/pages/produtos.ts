@@ -2,8 +2,10 @@ import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { ProdutoService } from '../services/produto.service';
-import { ProdutoDto } from '../models/produto.dto';
+import { InvestimentoService } from '../../investimentos/services/investimento.service'; // NOVO IMPORT
+import { ProdutoDto, ProdutoRequest } from '../models/produto.dto';
 import { BrMaskPipe, AppFormatter } from '../../../shared/pipes/br-mask.pipe';
 
 @Component({
@@ -16,11 +18,19 @@ import { BrMaskPipe, AppFormatter } from '../../../shared/pipes/br-mask.pipe';
 export class ProdutosComponent implements OnInit {
   private fb = inject(FormBuilder);
   private produtoService = inject(ProdutoService);
+  private investimentoService = inject(InvestimentoService); // INJETADO
+  private http = inject(HttpClient);
   private destroyRef = inject(DestroyRef);
 
   listaOriginal = signal<ProdutoDto[]>([]);
+  categorias = signal<any[]>([]);
+  fornecedores = signal<any[]>([]);
+  investidores = signal<any[]>([]); // NOVO SINAL
+
   loading = signal(false);
   salvando = signal(false);
+  processandoImagem = signal(false);
+
   paginaAtual = signal(1);
   itensPorPagina = signal(10);
   exibirModalEdicao = signal(false);
@@ -28,38 +38,83 @@ export class ProdutosComponent implements OnInit {
   exibicaoCusto = signal('');
   exibicaoVenda = signal('');
   exibirFiltrosAvancados = signal(false);
-  filtrosAtivos = signal({ termo: '', categoria: '', status: 'TODOS', limiteEstoque: null as number | null });
+  filtrosAtivos = signal({ termo: '', categoriaId: '', status: 'TODOS', limiteEstoque: null as number | null });
 
   filtroForm: FormGroup = this.fb.group({
-    termo: [''],
-    categoria: [''],
-    status: ['TODOS'],
-    limiteEstoque: [null]
+    termo: [''], categoriaId: [''], status: ['TODOS'], limiteEstoque: [null]
   });
 
   produtoForm: FormGroup = this.fb.group({
     nome: ['', [Validators.required, Validators.maxLength(150)]],
-    categoria: [''],
+    codigoBarras: ['', [Validators.maxLength(50)]],
+    imagemUrl: ['', [Validators.maxLength(500)]],
+    categoriaId: [null],
+    fornecedorId: [null],
     precoCusto: [null, [Validators.required, Validators.min(0)]],
     precoVenda: [null, [Validators.required, Validators.min(0)]],
     estoqueAtual: [null, [Validators.required, Validators.min(0)]],
-    estoqueMinimo: [5, [Validators.required, Validators.min(1)]] // Padrão 5
+    estoqueMinimo: [5, [Validators.required, Validators.min(1)]],
+    // NOVOS CONTROLES PARA INVESTIDOR
+    temInvestidor: [false],
+    investidorId: [null],
+    percentualLucroInvestidor: [null, [Validators.min(0), Validators.max(100)]]
   });
 
   get f() { return this.produtoForm.controls; }
 
+  previewImagem = computed(() => {
+    const url = this.produtoForm.get('imagemUrl')?.value;
+    // Verifica se é uma string válida e se tem um tamanho mínimo para ser uma URL/Base64
+    return (url && typeof url === 'string' && url.trim().length > 10) ? url : null;
+  });
+
   ngOnInit(): void {
+    this.carregarApoio();
     this.listarProdutos();
     this.escutarMudancasDeFiltro();
+    this.escutarToggleInvestidor(); // INICIALIZA INTELIGÊNCIA
   }
 
+  carregarApoio(): void {
+    this.http.get<any>('http://localhost:8080/api/apoio/categorias').subscribe(res => this.categorias.set(res.data || []));
+    this.http.get<any>('http://localhost:8080/api/apoio/fornecedores').subscribe(res => this.fornecedores.set(res.data || []));
+    // Busca investidores ativos
+    this.investimentoService.listarInvestidores().subscribe(res => {
+      const ativos = (res.data || []).filter((i: any) => i.status === 'ATIVO');
+      this.investidores.set(ativos);
+    });
+  }
+
+  // Torna os campos obrigatórios se o toggle for ativado
+  private escutarToggleInvestidor(): void {
+    this.produtoForm.get('temInvestidor')?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(isFinanciado => {
+        const invCtrl = this.produtoForm.get('investidorId');
+        const percCtrl = this.produtoForm.get('percentualLucroInvestidor');
+
+        if (isFinanciado) {
+          invCtrl?.setValidators([Validators.required]);
+          percCtrl?.setValidators([Validators.required, Validators.min(0.1), Validators.max(100)]);
+        } else {
+          invCtrl?.clearValidators();
+          percCtrl?.clearValidators();
+          invCtrl?.setValue(null);
+          percCtrl?.setValue(null);
+        }
+        invCtrl?.updateValueAndValidity();
+        percCtrl?.updateValueAndValidity();
+      });
+  }
+
+  // ... (escutarMudancasDeFiltro, produtosFiltrados, produtosPaginados, totalPaginas, limparFiltros, listarProdutos mantidos iguais)
   private escutarMudancasDeFiltro(): void {
     this.filtroForm.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(valores => {
         this.filtrosAtivos.set({
           termo: (valores.termo || '').toLowerCase(),
-          categoria: (valores.categoria || '').toLowerCase(),
+          categoriaId: valores.categoriaId || '',
           status: valores.status || 'TODOS',
           limiteEstoque: valores.limiteEstoque
         });
@@ -68,16 +123,15 @@ export class ProdutosComponent implements OnInit {
   }
 
   produtosFiltrados = computed(() => {
-    const { termo, categoria, status, limiteEstoque } = this.filtrosAtivos();
+    const { termo, categoriaId, status, limiteEstoque } = this.filtrosAtivos();
 
     return this.listaOriginal().filter(p => {
-      const matchNome = p.nome.toLowerCase().includes(termo);
-      const matchCat = p.categoria ? p.categoria.toLowerCase().includes(categoria) : true;
+      const matchNome = p.nome.toLowerCase().includes(termo) || (p.codigoBarras && p.codigoBarras.includes(termo));
+      const matchCat = categoriaId ? String(p.categoriaId) === String(categoriaId) : true;
       const limite = p.estoqueMinimo || 5;
       const isCritico = p.estoqueAtual <= limite;
       const matchStatus = status === 'TODOS' || (status === 'BAIXO' && isCritico) || (status === 'OK' && !isCritico);
       const matchLimite = limiteEstoque === null || p.estoqueAtual <= limiteEstoque;
-
       return matchNome && matchCat && matchStatus && matchLimite;
     });
   });
@@ -90,7 +144,7 @@ export class ProdutosComponent implements OnInit {
   totalPaginas = computed(() => Math.ceil(this.produtosFiltrados().length / this.itensPorPagina()) || 1);
 
   limparFiltros(): void {
-    this.filtroForm.reset({ status: 'TODOS' });
+    this.filtroForm.reset({ status: 'TODOS', categoriaId: '' });
   }
 
   listarProdutos(): void {
@@ -107,28 +161,66 @@ export class ProdutosComponent implements OnInit {
     });
   }
 
+  abrirLeitorCamera(): void {
+    const codigoLido = prompt('Escaneamento simulado: Digite o código de barras');
+    if (codigoLido) this.produtoForm.patchValue({ codigoBarras: codigoLido.trim() });
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.processandoImagem.set(true);
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        const base64 = e.target?.result as string;
+        // Atualiza o valor e força o formulário a revalidar
+        this.produtoForm.patchValue({ imagemUrl: base64 });
+        this.produtoForm.get('imagemUrl')?.updateValueAndValidity();
+        this.processandoImagem.set(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
   salvarProduto(): void {
+    // Limpeza: Se o usuário não selecionou investidor, garantimos que o ID seja null explicitamente
+    if (!this.produtoForm.get('temInvestidor')?.value) {
+      this.produtoForm.patchValue({ investidorId: null, percentualLucroInvestidor: null });
+    }
+
     if (this.produtoForm.invalid) {
       this.produtoForm.markAllAsTouched();
       return;
     }
 
     this.salvando.set(true);
-    const payload = this.produtoForm.value;
-    payload.precoCusto = payload.precoCusto || 0;
-    payload.precoVenda = payload.precoVenda || 0;
-    payload.estoqueAtual = payload.estoqueAtual || 0;
-    payload.estoqueMinimo = payload.estoqueMinimo || 5;
+    const formValue = this.produtoForm.value;
+
+    // PREPARA O PAYLOAD INCLUINDO O INVESTIDOR SE HOUVER
+    const payload: ProdutoRequest = {
+      nome: formValue.nome,
+      codigoBarras: formValue.codigoBarras,
+      imagemUrl: formValue.imagemUrl,
+      categoriaId: formValue.categoriaId || null,
+      fornecedorId: formValue.fornecedorId || null,
+      precoCusto: formValue.precoCusto || 0,
+      precoVenda: formValue.precoVenda || 0,
+      estoqueAtual: formValue.estoqueAtual || 0,
+      estoqueMinimo: formValue.estoqueMinimo || 5,
+      investidorId: formValue.temInvestidor ? formValue.investidorId : null,
+      percentualLucroInvestidor: formValue.temInvestidor ? formValue.percentualLucroInvestidor : null
+    };
 
     if (this.produtoParaEdicaoId) {
       this.produtoService.atualizar(this.produtoParaEdicaoId, payload).subscribe({
         next: () => this.concluirSalvamento(),
-        error: () => this.salvando.set(false)
+        error: (err) => { alert(err.error?.message || 'Erro ao salvar produto'); this.salvando.set(false); }
       });
     } else {
       this.produtoService.criar(payload).subscribe({
         next: () => this.concluirSalvamento(),
-        error: () => this.salvando.set(false)
+        error: (err) => { alert(err.error?.message || 'Erro ao criar produto'); this.salvando.set(false); }
       });
     }
   }
@@ -151,7 +243,7 @@ export class ProdutosComponent implements OnInit {
 
   abrirNovoProduto(): void {
     this.produtoParaEdicaoId = null;
-    this.produtoForm.reset({ estoqueMinimo: 5 });
+    this.produtoForm.reset({ estoqueMinimo: 5, categoriaId: '', fornecedorId: '', imagemUrl: '', temInvestidor: false });
     this.exibicaoCusto.set('');
     this.exibicaoVenda.set('');
     this.exibirModalEdicao.set(true);
@@ -159,18 +251,27 @@ export class ProdutosComponent implements OnInit {
 
   abrirEdicao(produto: any): void {
     this.produtoParaEdicaoId = produto.id;
+
+    // Mapeia se o produto possui investidor (baseado nos campos retornados pelo backend)
+    const temInvestidor = !!(produto.investidorId && produto.percentualLucroInvestidor);
+
     this.produtoForm.patchValue({
       nome: produto.nome,
-      categoria: produto.categoria,
+      codigoBarras: produto.codigoBarras,
+      imagemUrl: produto.imagemUrl,
+      categoriaId: produto.categoriaId || '',
+      fornecedorId: produto.fornecedorId || '',
       precoCusto: produto.precoCusto,
       precoVenda: produto.precoVenda,
       estoqueAtual: produto.estoqueAtual,
-      estoqueMinimo: produto.estoqueMinimo || 5
+      estoqueMinimo: produto.estoqueMinimo || 5,
+      temInvestidor: temInvestidor,
+      investidorId: produto.investidorId || null,
+      percentualLucroInvestidor: produto.percentualLucroInvestidor || null
     });
 
     this.exibicaoCusto.set(AppFormatter.decimal(produto.precoCusto));
     this.exibicaoVenda.set(AppFormatter.decimal(produto.precoVenda));
-
     this.exibirModalEdicao.set(true);
   }
 
@@ -185,26 +286,18 @@ export class ProdutosComponent implements OnInit {
 
   formatarMoedaParaForm(event: Event, campo: 'precoCusto' | 'precoVenda'): void {
     const input = event.target as HTMLInputElement;
-
     if (input.value === '') {
       this.produtoForm.patchValue({ [campo]: null });
       if (campo === 'precoCusto') this.exibicaoCusto.set('');
       else this.exibicaoVenda.set('');
       return;
     }
-
     let valorNumStr = input.value.replace(/\D/g, '');
     if (!valorNumStr) valorNumStr = '0';
-
     const valorNumerico = Number(valorNumStr) / 100;
     const valorFormatado = AppFormatter.decimal(valorNumerico);
-
-    if (campo === 'precoCusto') {
-      this.exibicaoCusto.set(valorFormatado);
-    } else {
-      this.exibicaoVenda.set(valorFormatado);
-    }
-
+    if (campo === 'precoCusto') this.exibicaoCusto.set(valorFormatado);
+    else this.exibicaoVenda.set(valorFormatado);
     this.produtoForm.patchValue({ [campo]: valorNumerico });
   }
 }

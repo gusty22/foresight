@@ -1,6 +1,7 @@
 package br.com.foresight.modules.comercial.venda.entity;
 
 import br.com.foresight.core.domain.BaseEntity;
+import br.com.foresight.modules.comercial.investimento.entity.LoteEstoque;
 import br.com.foresight.modules.comercial.produto.entity.Produto;
 import jakarta.persistence.*;
 import lombok.*;
@@ -24,9 +25,18 @@ public class ItemVenda extends BaseEntity {
     @JoinColumn(name = "produto_id", nullable = false)
     private Produto produto;
 
+    // NOVO: Amarra o item vendido exatamente ao lote de onde ele saiu (FIFO)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lote_id")
+    private LoteEstoque lote;
+
     @Column(nullable = false)
     private Integer quantidade;
 
-    @Column(name = "preco_unitario", nullable = false)
+    @Column(name = "preco_unitario", nullable = false, precision = 15, scale = 2)
     private BigDecimal precoUnitario;
+
+    // NOVO: Fundamental para congelar qual foi o custo exato dessa unidade na hora da venda
+    @Column(name = "custo_unitario_lote", nullable = false, precision = 15, scale = 2)
+    private BigDecimal custoUnitarioLote;
 }

@@ -23,7 +23,7 @@ public class ProdutoController {
     public ResponseEntity<ApiResponse<ProdutoDto>> criar(@RequestBody @Valid ProdutoRequest request) {
         ProdutoDto produtoCriado = service.criar(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(produtoCriado, "Produto cadastrado com sucesso no catálogo."));
+                .body(ApiResponse.success(produtoCriado, "Produto cadastrado com sucesso."));
     }
 
     @GetMapping
@@ -34,6 +34,14 @@ public class ProdutoController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProdutoDto>> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(service.buscarPorId(id)));
+    }
+
+    // =========================================================================
+    // NOVO: ENDPOINT PARA ESCANEAMENTO DE CÓDIGO DE BARRAS
+    // =========================================================================
+    @GetMapping("/barcode/{codigo}")
+    public ResponseEntity<ApiResponse<ProdutoDto>> buscarPorCodigoBarras(@PathVariable String codigo) {
+        return ResponseEntity.ok(ApiResponse.success(service.buscarPorCodigoBarras(codigo)));
     }
 
     @PutMapping("/{id}")

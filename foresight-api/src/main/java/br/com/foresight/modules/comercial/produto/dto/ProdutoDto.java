@@ -5,12 +5,21 @@ import java.math.BigDecimal;
 public record ProdutoDto(
         Long id,
         String nome,
-        String categoria,
+        String codigoBarras,
+        String imagemUrl,
+        Long categoriaId,
+        String categoriaNome,
+        Long fornecedorId,
+        String fornecedorNome,
         BigDecimal precoCusto,
         BigDecimal precoVenda,
         Integer estoqueAtual,
         Integer estoqueMinimo,
         BigDecimal margemReal,
         BigDecimal lucroReal,
-        String alertaStatus
+        String alertaStatus,
+        // NOVOS CAMPOS PARA FINANCIAMENTO
+        Long investidorId,
+        String investidorNome,
+        BigDecimal percentualLucroInvestidor
 ) {}

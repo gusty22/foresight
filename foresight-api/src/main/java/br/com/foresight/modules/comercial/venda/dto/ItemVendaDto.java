@@ -15,5 +15,9 @@ public record ItemVendaDto(
         Integer quantidade,
 
         @NotNull(message = "O preço unitário é obrigatório")
-        BigDecimal precoUnitario
+        BigDecimal precoUnitario,
+
+        // Campos retornados pelo Back-end para auditoria da venda (Nulos na hora de salvar)
+        Long loteId,
+        BigDecimal custoUnitarioLote
 ) {}
