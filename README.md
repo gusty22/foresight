@@ -111,7 +111,7 @@ Utilize as seguintes credenciais padrão para acessar a aplicação:
 | **E-mail/Login** | `projeto@foresight.com` |
 | **Senha** | `admin123`                |
 
-> **Nota:** Caso as migrations não insiram os dados mockados no ambiente de teste, um arquivo `dados_teste.sql` está disponível na raiz do repositório para importação manual no banco de dados.
+> **Nota:** Caso as migrations não insiram os dados mockados no ambiente de teste, basta cadastrar uma conta e acessar o sistema, porém não haverá nada incluso.
 
 ---
 
