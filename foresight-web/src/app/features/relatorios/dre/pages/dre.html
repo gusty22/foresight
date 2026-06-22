@@ -1,58 +1,102 @@
 <div class="container-fluid p-4">
+  <!-- Cabeçalho -->
   <div class="mb-4 d-flex justify-content-between align-items-center">
     <div>
-      <h2 class="fw-bold text-dark">DRE Mensal</h2>
-      <p class="text-muted small">Demonstrativo de Resultados do Exercício</p>
+      <h2 class="fw-bold text-dark mb-1">DRE Gerencial</h2>
+      <p class="text-muted small m-0">Demonstrativo de Resultados do Exercício</p>
     </div>
-    <button (click)="carregarDre()" class="btn btn-outline-primary btn-sm rounded-pill">
-      <i class="bi bi-arrow-clockwise me-1"></i> Atualizar Dados
+    <button (click)="exportarDados()" class="btn btn-outline-success btn-sm rounded-pill px-3 fw-bold shadow-sm">
+      <i class="bi bi-file-earmark-excel me-1"></i> Exportar
     </button>
+  </div>
+
+  <!-- Barra de Filtros (Simplificada e Funcional) -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+    <div class="card-body p-3">
+      <form [formGroup]="filtroForm" (ngSubmit)="carregarDre()" class="d-flex gap-3 align-items-end">
+
+        <div class="flex-grow-1" style="max-width: 200px;">
+          <label class="small fw-bold text-muted mb-1">Periodicidade</label>
+          <select formControlName="periodicidade" class="form-select bg-light border-0">
+            <option *ngFor="let p of periodicidades" [value]="p.valor">{{ p.nome }}</option>
+          </select>
+        </div>
+
+        <div class="flex-grow-1" style="max-width: 220px;" *ngIf="filtroForm.get('periodicidade')?.value === 'MENSAL'">
+          <label class="small fw-bold text-muted mb-1">Mês de Referência</label>
+          <select formControlName="periodoValor" class="form-select bg-light border-0">
+            <option *ngFor="let m of meses" [value]="m.valor">{{ m.nome }}</option>
+          </select>
+        </div>
+
+        <div class="flex-grow-1" style="max-width: 220px;" *ngIf="filtroForm.get('periodicidade')?.value === 'TRIMESTRAL'">
+          <label class="small fw-bold text-muted mb-1">Trimestre de Referência</label>
+          <select formControlName="periodoValor" class="form-select bg-light border-0">
+            <option *ngFor="let t of trimestres" [value]="t.valor">{{ t.nome }}</option>
+          </select>
+        </div>
+
+        <div class="flex-grow-1" style="max-width: 150px;">
+          <label class="small fw-bold text-muted mb-1">Ano</label>
+          <select formControlName="ano" class="form-select bg-light border-0">
+            <option *ngFor="let a of anos" [value]="a">{{ a }}</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary fw-bold px-4">
+          <i class="bi bi-search me-2"></i>Consultar Período
+        </button>
+
+      </form>
+    </div>
   </div>
 
   <div *ngIf="loading()" class="text-center py-5">
     <div class="spinner-border text-primary" role="status"></div>
   </div>
 
-  <div class="card border-0 shadow-sm p-5 rounded-4 bg-white" *ngIf="!loading() && dre()">
-    <div class="row mb-5 border-bottom pb-4">
+  <!-- Resultado DRE com nomenclatura padronizada -->
+  <div class="card border-0 shadow-sm p-4 p-md-5 rounded-4 bg-white" *ngIf="!loading() && dre()">
+
+    <div class="row mb-5 border-bottom pb-4 align-items-center">
       <div class="col-md-6">
-        <h5 class="text-uppercase small fw-bold text-muted mb-1">Resultado Final</h5>
-
-        <h1 class="fw-bold mb-0" [ngClass]="dre().lucroLiquido > 0 ? 'text-success' : 'text-danger'">
-          {{ dre().lucroLiquido | brFmt:'moeda' }}
-        </h1>
-
+        <h5 class="text-uppercase small fw-bold text-muted mb-1">Resultado Final do Período</h5>
+        <div class="d-flex align-items-center gap-3">
+          <h1 class="fw-bold mb-0" [ngClass]="dre().lucroLiquido > 0 ? 'text-success' : 'text-danger'">
+            {{ dre().lucroLiquido | brFmt:'moeda' }}
+          </h1>
+        </div>
       </div>
-      <div class="col-md-6 text-end">
+      <div class="col-md-6 text-md-end mt-4 mt-md-0">
         <div class="d-inline-block text-start p-3 bg-light rounded-3">
-          <span class="text-muted extra-small d-block text-uppercase">Margem Líquida</span>
-          <span class="fw-bold fs-4">{{ dre().margemLiquidaPercentual }}%</span>
+          <span class="text-muted extra-small d-block text-uppercase fw-bold">Margem Líquida</span>
+          <span class="fw-bold fs-3">{{ dre().margemLiquidaPercentual | number:'1.2-2' }}%</span>
         </div>
       </div>
     </div>
 
     <div class="table-responsive">
-      <table class="table table-borderless align-middle">
+      <table class="table table-borderless align-middle mb-0">
         <tbody>
         <tr class="border-bottom">
-          <td class="py-3 fw-bold text-uppercase small">(=) Faturamento Bruto (PJ)</td>
+          <td class="py-3 fw-bold text-uppercase small text-dark"><i class="bi bi-plus-circle text-success me-2"></i>(=) Receita Operacional Bruta</td>
           <td class="py-3 text-end fw-bold text-success">{{ dre().faturamentoTotal | brFmt:'moeda' }}</td>
         </tr>
         <tr class="text-muted small">
-          <td class="py-2 ps-4">(-) Custos de Mercadorias (CPV)</td>
-          <td class="py-2 text-end">- {{ dre().custosProdutosVendidos | brFmt:'moeda' }}</td>
+          <td class="py-3 ps-4"><i class="bi bi-dash-circle text-danger me-2"></i>(-) Custos (CPV / CSP)</td>
+          <td class="py-3 text-end">- {{ dre().custosProdutosVendidos | brFmt:'moeda' }}</td>
         </tr>
-        <tr class="border-bottom">
-          <td class="py-3 fw-bold text-uppercase small">(=) Lucro Bruto</td>
-          <td class="py-3 text-end fw-bold">{{ dre().lucroBruto | brFmt:'moeda' }}</td>
+        <tr class="border-bottom bg-light bg-opacity-50">
+          <td class="py-3 ps-3 fw-bold text-uppercase small text-dark">(=) Lucro Bruto</td>
+          <td class="py-3 pe-3 text-end fw-bold text-dark">{{ dre().lucroBruto | brFmt:'moeda' }}</td>
         </tr>
         <tr class="text-muted small">
-          <td class="py-2 ps-4">(-) Despesas Operacionais Fixas</td>
-          <td class="py-2 text-end text-danger">- {{ dre().despesasOperacionais | brFmt:'moeda' }}</td>
+          <td class="py-3 ps-4"><i class="bi bi-dash-circle text-danger me-2"></i>(-) Despesas Operacionais</td>
+          <td class="py-3 text-end text-danger">- {{ dre().despesasOperacionais | brFmt:'moeda' }}</td>
         </tr>
-        <tr class="bg-dark text-white">
-          <td class="py-4 ps-3 rounded-start fw-bold fs-5">(=) LUCRO LÍQUIDO REAL</td>
-          <td class="py-4 pe-3 text-end rounded-end fw-bold fs-5" [class.text-success]="dre().lucroLiquido > 0">
+        <tr class="bg-dark text-white shadow-sm">
+          <td class="py-4 ps-4 rounded-start fw-bold fs-5">(=) LUCRO LÍQUIDO</td>
+          <td class="py-4 pe-4 text-end rounded-end fw-bold fs-5" [class.text-success]="dre().lucroLiquido > 0">
             {{ dre().lucroLiquido | brFmt:'moeda' }}
           </td>
         </tr>
@@ -60,12 +104,14 @@
       </table>
     </div>
 
-    <div class="alert alert-warning border-0 mt-5 p-4 rounded-4 small">
-      <h6 class="fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Segurança Patrimonial</h6>
-      <p class="mb-0">
-        Este relatório ignora suas <strong>contas pessoais (PF)</strong> para mostrar se o seu negócio é viável sozinho.
-        Se o lucro líquido for menor que o pro-labore desejado, você precisa reajustar seus preços no simulador.
-      </p>
+    <div class="alert alert-warning border-0 mt-5 p-4 rounded-4 small d-flex gap-3 align-items-center shadow-sm">
+      <i class="bi bi-shield-lock-fill fs-2 text-warning"></i>
+      <div>
+        <h6 class="fw-bold mb-1">Análise de Desempenho</h6>
+        <p class="mb-0 text-muted">
+          Este demonstrativo reflete o regime de competência do negócio. Caso o lucro líquido esteja negativo ou com margens baixas, utilize o painel de Preço Inteligente para simular ajustes nos custos ou despesas.
+        </p>
+      </div>
     </div>
   </div>
 </div>

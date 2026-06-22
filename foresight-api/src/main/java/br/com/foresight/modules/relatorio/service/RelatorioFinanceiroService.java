@@ -5,6 +5,7 @@ import br.com.foresight.core.tenant.TenantContext;
 import br.com.foresight.modules.comercial.produto.repository.IProdutoRepository;
 import br.com.foresight.modules.comercial.venda.entity.Venda;
 import br.com.foresight.modules.comercial.venda.repository.IVendaRepository;
+import br.com.foresight.modules.financeiro.despesa.entity.Despesa;
 import br.com.foresight.modules.financeiro.despesa.repository.IDespesaRepository;
 import br.com.foresight.modules.financeiro.fluxo_caixa.entity.CategoriaFluxo;
 import br.com.foresight.modules.financeiro.fluxo_caixa.repository.IFluxoCaixaRepository;
@@ -43,23 +44,42 @@ public class RelatorioFinanceiroService {
     }
 
     @Transactional(readOnly = true)
-    public DreDto gerarDreMensal(int mes) {
+    public DreDto gerarDre(String periodicidade, Integer periodoValor, Integer anoParam) {
         Long tenantId = getTenantIdSeguro();
 
-        int anoAtual = YearMonth.now().getYear();
-        LocalDateTime inicioMes = LocalDate.of(anoAtual, mes, 1).atStartOfDay();
-        LocalDateTime fimMes = YearMonth.of(anoAtual, mes).atEndOfMonth().atTime(23, 59, 59);
+        int ano = (anoParam != null) ? anoParam : YearMonth.now().getYear();
+        LocalDateTime inicio;
+        LocalDateTime fim;
 
-        BigDecimal faturamentoBruto = vendaRepository.somarFaturamentoPorPeriodo(tenantId, inicioMes, fimMes);
+        // Configuração dinâmica do período[cite: 1, 2, 3, 4]
+        if ("TRIMESTRAL".equalsIgnoreCase(periodicidade)) {
+            int trimestre = (periodoValor != null) ? periodoValor : ((LocalDateTime.now().getMonthValue() - 1) / 3) + 1;
+            int mesInicio = (trimestre - 1) * 3 + 1;
+            int mesFim = mesInicio + 2;
+            inicio = LocalDate.of(ano, mesInicio, 1).atStartOfDay();
+            fim = YearMonth.of(ano, mesFim).atEndOfMonth().atTime(23, 59, 59);
+        } else if ("ANUAL".equalsIgnoreCase(periodicidade)) {
+            inicio = LocalDate.of(ano, 1, 1).atStartOfDay();
+            fim = LocalDate.of(ano, 12, 31).atTime(23, 59, 59);
+        } else { // MENSAL
+            int mes = (periodoValor != null) ? periodoValor : LocalDateTime.now().getMonthValue();
+            inicio = LocalDate.of(ano, mes, 1).atStartOfDay();
+            fim = YearMonth.of(ano, mes).atEndOfMonth().atTime(23, 59, 59);
+        }
+
+        // Faturamento Bruto da Atividade
+        BigDecimal faturamentoBruto = vendaRepository.somarFaturamentoPorPeriodo(tenantId, inicio, fim);
         if (faturamentoBruto == null) faturamentoBruto = BigDecimal.ZERO;
 
-        List<Venda> vendasDoMes = vendaRepository.findAllByEmpresaIdOrderByDataDesc(tenantId).stream()
+        // Considerando regime de competência (data de ocorrência)[cite: 1, 2, 3, 4]
+        List<Venda> vendasDoPeriodo = vendaRepository.findAllByEmpresaIdOrderByDataDesc(tenantId).stream()
                 .filter(v -> "PAGO".equalsIgnoreCase(v.getStatusPagamento()) &&
-                        v.getData().isAfter(inicioMes) && v.getData().isBefore(fimMes))
+                        !v.getData().isBefore(inicio) && !v.getData().isAfter(fim))
                 .toList();
 
+        // Custos (CPV) com a produção/aquisição[cite: 1]
         BigDecimal custosMercadorias = BigDecimal.ZERO;
-        for (Venda venda : vendasDoMes) {
+        for (Venda venda : vendasDoPeriodo) {
             if (venda.getItens() != null) {
                 for (var item : venda.getItens()) {
                     if (item.getProduto() != null && item.getProduto().getPrecoCusto() != null) {
@@ -70,10 +90,17 @@ public class RelatorioFinanceiroService {
             }
         }
 
+        // Lucro Bruto após pagar custos primários[cite: 1]
         BigDecimal lucroBruto = faturamentoBruto.subtract(custosMercadorias);
-        BigDecimal despesasOperacionais = despesaRepository.somarDespesasMes(tenantId, mes);
+
+        // Despesas Operacionais
+        BigDecimal despesasOperacionais = despesaRepository.findAllByEmpresaIdOrderByDataDesc(tenantId).stream()
+                .filter(d -> !d.getData().isBefore(inicio) && !d.getData().isAfter(fim))
+                .map(Despesa::getValor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         if (despesasOperacionais == null) despesasOperacionais = BigDecimal.ZERO;
 
+        // Lucro Líquido final indicando a saúde econômica[cite: 1, 2, 3, 4]
         BigDecimal lucroLiquido = lucroBruto.subtract(despesasOperacionais);
 
         Double margemLiquida = 0.0;

@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ProdutoService } from '../services/produto.service';
-import { InvestimentoService } from '../../investimentos/services/investimento.service'; // NOVO IMPORT
+import { InvestimentoService } from '../../investimentos/services/investimento.service';
 import { ProdutoDto, ProdutoRequest } from '../models/produto.dto';
 import { BrMaskPipe, AppFormatter } from '../../../shared/pipes/br-mask.pipe';
 
@@ -18,18 +18,16 @@ import { BrMaskPipe, AppFormatter } from '../../../shared/pipes/br-mask.pipe';
 export class ProdutosComponent implements OnInit {
   private fb = inject(FormBuilder);
   private produtoService = inject(ProdutoService);
-  private investimentoService = inject(InvestimentoService); // INJETADO
+  private investimentoService = inject(InvestimentoService);
   private http = inject(HttpClient);
   private destroyRef = inject(DestroyRef);
 
   listaOriginal = signal<ProdutoDto[]>([]);
   categorias = signal<any[]>([]);
-  fornecedores = signal<any[]>([]);
-  investidores = signal<any[]>([]); // NOVO SINAL
+  investidores = signal<any[]>([]);
 
   loading = signal(false);
   salvando = signal(false);
-  processandoImagem = signal(false);
 
   paginaAtual = signal(1);
   itensPorPagina = signal(10);
@@ -46,15 +44,12 @@ export class ProdutosComponent implements OnInit {
 
   produtoForm: FormGroup = this.fb.group({
     nome: ['', [Validators.required, Validators.maxLength(150)]],
-    codigoBarras: ['', [Validators.maxLength(50)]],
-    imagemUrl: ['', [Validators.maxLength(500)]],
     categoriaId: [null],
-    fornecedorId: [null],
+    fornecedorNome: ['', [Validators.maxLength(150)]],
     precoCusto: [null, [Validators.required, Validators.min(0)]],
     precoVenda: [null, [Validators.required, Validators.min(0)]],
     estoqueAtual: [null, [Validators.required, Validators.min(0)]],
     estoqueMinimo: [5, [Validators.required, Validators.min(1)]],
-    // NOVOS CONTROLES PARA INVESTIDOR
     temInvestidor: [false],
     investidorId: [null],
     percentualLucroInvestidor: [null, [Validators.min(0), Validators.max(100)]]
@@ -62,30 +57,30 @@ export class ProdutosComponent implements OnInit {
 
   get f() { return this.produtoForm.controls; }
 
-  previewImagem = computed(() => {
-    const url = this.produtoForm.get('imagemUrl')?.value;
-    // Verifica se é uma string válida e se tem um tamanho mínimo para ser uma URL/Base64
-    return (url && typeof url === 'string' && url.trim().length > 10) ? url : null;
-  });
-
   ngOnInit(): void {
     this.carregarApoio();
     this.listarProdutos();
     this.escutarMudancasDeFiltro();
-    this.escutarToggleInvestidor(); // INICIALIZA INTELIGÊNCIA
+    this.escutarToggleInvestidor();
   }
 
   carregarApoio(): void {
-    this.http.get<any>('http://localhost:8080/api/apoio/categorias').subscribe(res => this.categorias.set(res.data || []));
-    this.http.get<any>('http://localhost:8080/api/apoio/fornecedores').subscribe(res => this.fornecedores.set(res.data || []));
-    // Busca investidores ativos
+    // Categorias pré-definidas para facilitar a apresentação (Hardcoded)
+    this.categorias.set([
+      { id: 1, nome: 'Eletrônicos e Celulares' },
+      { id: 2, nome: 'Acessórios de Informática' },
+      { id: 3, nome: 'Móveis e Decoração' },
+      { id: 4, nome: 'Papelaria e Escritório' },
+      { id: 5, nome: 'Outros' }
+    ]);
+
+    // Busca investidores ativos normalmente
     this.investimentoService.listarInvestidores().subscribe(res => {
       const ativos = (res.data || []).filter((i: any) => i.status === 'ATIVO');
       this.investidores.set(ativos);
     });
   }
 
-  // Torna os campos obrigatórios se o toggle for ativado
   private escutarToggleInvestidor(): void {
     this.produtoForm.get('temInvestidor')?.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -107,7 +102,6 @@ export class ProdutosComponent implements OnInit {
       });
   }
 
-  // ... (escutarMudancasDeFiltro, produtosFiltrados, produtosPaginados, totalPaginas, limparFiltros, listarProdutos mantidos iguais)
   private escutarMudancasDeFiltro(): void {
     this.filtroForm.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -161,30 +155,7 @@ export class ProdutosComponent implements OnInit {
     });
   }
 
-  abrirLeitorCamera(): void {
-    const codigoLido = prompt('Escaneamento simulado: Digite o código de barras');
-    if (codigoLido) this.produtoForm.patchValue({ codigoBarras: codigoLido.trim() });
-  }
-
-  onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      this.processandoImagem.set(true);
-      const file = input.files[0];
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        const base64 = e.target?.result as string;
-        // Atualiza o valor e força o formulário a revalidar
-        this.produtoForm.patchValue({ imagemUrl: base64 });
-        this.produtoForm.get('imagemUrl')?.updateValueAndValidity();
-        this.processandoImagem.set(false);
-      };
-      reader.readAsDataURL(file);
-    }
-  }
-
   salvarProduto(): void {
-    // Limpeza: Se o usuário não selecionou investidor, garantimos que o ID seja null explicitamente
     if (!this.produtoForm.get('temInvestidor')?.value) {
       this.produtoForm.patchValue({ investidorId: null, percentualLucroInvestidor: null });
     }
@@ -197,13 +168,12 @@ export class ProdutosComponent implements OnInit {
     this.salvando.set(true);
     const formValue = this.produtoForm.value;
 
-    // PREPARA O PAYLOAD INCLUINDO O INVESTIDOR SE HOUVER
     const payload: ProdutoRequest = {
       nome: formValue.nome,
-      codigoBarras: formValue.codigoBarras,
-      imagemUrl: formValue.imagemUrl,
+      codigoBarras: null, // Simplificado para a apresentação
+      imagemUrl: null, // Simplificado para a apresentação
       categoriaId: formValue.categoriaId || null,
-      fornecedorId: formValue.fornecedorId || null,
+      fornecedorId: null, // Não enviamos o ID pois a tela possui apenas um campo de texto agora
       precoCusto: formValue.precoCusto || 0,
       precoVenda: formValue.precoVenda || 0,
       estoqueAtual: formValue.estoqueAtual || 0,
@@ -215,12 +185,18 @@ export class ProdutosComponent implements OnInit {
     if (this.produtoParaEdicaoId) {
       this.produtoService.atualizar(this.produtoParaEdicaoId, payload).subscribe({
         next: () => this.concluirSalvamento(),
-        error: (err) => { alert(err.error?.message || 'Erro ao salvar produto'); this.salvando.set(false); }
+        error: (err) => {
+          console.error(err.error?.message || 'Erro ao salvar produto');
+          this.salvando.set(false);
+        }
       });
     } else {
       this.produtoService.criar(payload).subscribe({
         next: () => this.concluirSalvamento(),
-        error: (err) => { alert(err.error?.message || 'Erro ao criar produto'); this.salvando.set(false); }
+        error: (err) => {
+          console.error(err.error?.message || 'Erro ao criar produto');
+          this.salvando.set(false);
+        }
       });
     }
   }
@@ -243,7 +219,7 @@ export class ProdutosComponent implements OnInit {
 
   abrirNovoProduto(): void {
     this.produtoParaEdicaoId = null;
-    this.produtoForm.reset({ estoqueMinimo: 5, categoriaId: '', fornecedorId: '', imagemUrl: '', temInvestidor: false });
+    this.produtoForm.reset({ estoqueMinimo: 5, categoriaId: '', fornecedorNome: '', temInvestidor: false });
     this.exibicaoCusto.set('');
     this.exibicaoVenda.set('');
     this.exibirModalEdicao.set(true);
@@ -251,16 +227,12 @@ export class ProdutosComponent implements OnInit {
 
   abrirEdicao(produto: any): void {
     this.produtoParaEdicaoId = produto.id;
-
-    // Mapeia se o produto possui investidor (baseado nos campos retornados pelo backend)
     const temInvestidor = !!(produto.investidorId && produto.percentualLucroInvestidor);
 
     this.produtoForm.patchValue({
       nome: produto.nome,
-      codigoBarras: produto.codigoBarras,
-      imagemUrl: produto.imagemUrl,
       categoriaId: produto.categoriaId || '',
-      fornecedorId: produto.fornecedorId || '',
+      fornecedorNome: produto.fornecedorNome || '',
       precoCusto: produto.precoCusto,
       precoVenda: produto.precoVenda,
       estoqueAtual: produto.estoqueAtual,

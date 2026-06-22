@@ -34,10 +34,12 @@ public class RelatorioController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> obterPontoEquilibrio() {
         return ResponseEntity.ok(ApiResponse.success(relatorioService.calcularPontoEquilibrio()));
     }
-
     @GetMapping("/dre")
-    public ResponseEntity<ApiResponse<DreDto>> obterDre() {
-        int mesAtual = LocalDateTime.now().getMonthValue();
-        return ResponseEntity.ok(ApiResponse.success(relatorioService.gerarDreMensal(mesAtual)));
+    public ResponseEntity<ApiResponse<DreDto>> obterDre(
+            @RequestParam(required = false, defaultValue = "MENSAL") String periodicidade,
+            @RequestParam(required = false) Integer periodoValor,
+            @RequestParam(required = false) Integer ano) {
+
+        return ResponseEntity.ok(ApiResponse.success(relatorioService.gerarDre(periodicidade, periodoValor, ano)));
     }
 }
