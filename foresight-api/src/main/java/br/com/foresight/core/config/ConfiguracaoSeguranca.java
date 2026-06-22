@@ -44,8 +44,15 @@ public class ConfiguracaoSeguranca {
                         // Libera o CORS Preflight (Requisições OPTIONS do navegador)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Libera as rotas de Autenticação e Documentação
-                        .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                        // Libera as rotas de Autenticação e Documentação (Swagger completo)
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
 
                         // Protege o Backoffice (Apenas o dono do sistema acessa)
                         .requestMatchers("/api/backoffice/**").hasRole("SUPER_ADMIN")
