@@ -2,11 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiResponse } from '../../../../core/http/api-response.model';
-import { FiltroRelatorio, PageResponse, TransacaoRelatorio, RankingVendas } from '../models/relatorio-avancado.model';
+import { FiltroRelatorio, PageResponse, TransacaoRelatorio, RankingVendas, InadimplenciaRelatorio } from '../models/relatorio-avancado.model';
 
 @Injectable({ providedIn: 'root' })
 export class RelatorioAvancadoService {
   private http = inject(HttpClient);
+  // Atenção: a base da API agora é genérica para atender todas as abas
   private readonly API = 'http://localhost:8080/api/relatorios';
 
   private buildParams(filtro: FiltroRelatorio): HttpParams {
@@ -25,16 +26,23 @@ export class RelatorioAvancadoService {
     return params;
   }
 
+  // 1. Aba Fluxo de Caixa e Vendas (Paginado)
   buscarDados(filtro: FiltroRelatorio): Observable<ApiResponse<PageResponse<TransacaoRelatorio>>> {
     return this.http.get<ApiResponse<PageResponse<TransacaoRelatorio>>>(`${this.API}/avancado`, { params: this.buildParams(filtro) });
   }
 
+  // Exportação PDF (Para Fluxo e Vendas)
   exportarPdf(filtro: FiltroRelatorio): Observable<Blob> {
     return this.http.get(`${this.API}/avancado/export/pdf`, { params: this.buildParams(filtro), responseType: 'blob' });
   }
 
-  // NOVO MÉTODO PARA BUSCAR O RANKING
+  // 2. Aba Ranking de Vendas
   buscarRanking(): Observable<ApiResponse<RankingVendas[]>> {
     return this.http.get<ApiResponse<RankingVendas[]>>(`${this.API}/ranking-vendas`);
+  }
+
+  // 3. Aba Inadimplência
+  buscarInadimplencia(): Observable<ApiResponse<InadimplenciaRelatorio[]>> {
+    return this.http.get<ApiResponse<InadimplenciaRelatorio[]>>(`${this.API}/inadimplencia`);
   }
 }

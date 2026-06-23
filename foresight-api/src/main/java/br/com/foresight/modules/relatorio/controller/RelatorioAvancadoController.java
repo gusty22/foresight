@@ -36,7 +36,7 @@ public class RelatorioAvancadoController {
 
     @GetMapping(value = "/export/pdf", produces = "application/pdf")
     public ResponseEntity<byte[]> exportarPdf(
-            @RequestParam(value = "contexto", required = false, defaultValue = "FLUXO") String contexto,
+            @RequestParam(required = false, defaultValue = "FLUXO") String contexto,
             @RequestParam(required = false) String termo,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
@@ -45,7 +45,7 @@ public class RelatorioAvancadoController {
 
         byte[] pdf = service.exportarParaPdf(contexto, termo, dataInicio, dataFim, tipo, categoria);
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=relatorio_avancado.pdf")
+                .header("Content-Disposition", "attachment; filename=relatorio_" + contexto.toLowerCase() + ".pdf")
                 .body(pdf);
     }
 }

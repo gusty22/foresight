@@ -6,6 +6,8 @@ import br.com.foresight.modules.comercial.venda.entity.Venda;
 import br.com.foresight.modules.comercial.venda.repository.IVendaRepository;
 import br.com.foresight.modules.financeiro.fluxo_caixa.entity.FluxoCaixa;
 import br.com.foresight.modules.financeiro.fluxo_caixa.repository.IFluxoCaixaRepository;
+import br.com.foresight.modules.relatorio.dto.InadimplenciaDto;
+import br.com.foresight.modules.relatorio.dto.RankingVendasDto;
 import br.com.foresight.modules.relatorio.dto.TransacaoRelatorioDto;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.*;
@@ -26,7 +28,9 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -43,14 +47,15 @@ public class RelatorioAvancadoService {
         return tenantId;
     }
 
+    // ==========================================
+    // BUSCAS DE DADOS (TELA)
+    // ==========================================
     @Transactional(readOnly = true)
     public Page<TransacaoRelatorioDto> buscarDados(
             String contexto, String termo, LocalDate dataInicio, LocalDate dataFim, String tipo, String categoria, Pageable pageable) {
 
         if ("VENDAS".equalsIgnoreCase(contexto)) {
-            // Traduz a ordenação do Frontend para os nomes corretos da entidade Venda
             Pageable pageableVenda = adaptarPageableParaVenda(pageable);
-
             return vendaRepository.findAll(criarSpecVenda(getTenantId(), termo, dataInicio, dataFim), pageableVenda)
                     .map(this::mapearVenda);
         }
@@ -60,9 +65,38 @@ public class RelatorioAvancadoService {
     }
 
     @Transactional(readOnly = true)
-    public byte[] exportarParaPdf(String contexto, String termo, LocalDate dataInicio, LocalDate dataFim, String tipo, String categoria) {
-        List<TransacaoRelatorioDto> dados;
+    public List<RankingVendasDto> gerarRankingVendas() {
+        return vendaRepository.rankingDeVendasPorReceita(getTenantId());
+    }
 
+    @Transactional(readOnly = true)
+    public List<InadimplenciaDto> gerarRelatorioInadimplencia() {
+        LocalDate hoje = LocalDate.now();
+        return vendaRepository.findAllByEmpresaIdOrderByDataDesc(getTenantId()).stream()
+                .filter(v -> v.getStatusPagamento() != null &&
+                        !"PAGO".equalsIgnoreCase(v.getStatusPagamento()) &&
+                        !"CANCELADO".equalsIgnoreCase(v.getStatusPagamento()))
+                .map(v -> {
+                    LocalDate vencimento = v.getDataPrevisaoPagamento() != null ? v.getDataPrevisaoPagamento() : v.getData().toLocalDate();
+                    long dias = ChronoUnit.DAYS.between(vencimento, hoje);
+                    return new InadimplenciaDto(v.getId(), v.getCliente(), vencimento, Math.max(dias, 0), v.getValorTotal(), dias > 0 ? "ATRASADO" : "A VENCER");
+                })
+                .sorted(Comparator.comparing(InadimplenciaDto::diasAtraso).reversed())
+                .toList();
+    }
+
+    // ==========================================
+    // EXPORTAÇÃO PDF UNIFICADA
+    // ==========================================
+    @Transactional(readOnly = true)
+    public byte[] exportarParaPdf(String contexto, String termo, LocalDate dataInicio, LocalDate dataFim, String tipo, String categoria) {
+        if ("RANKING".equalsIgnoreCase(contexto)) {
+            return gerarPdfRanking(gerarRankingVendas());
+        } else if ("INADIMPLENCIA".equalsIgnoreCase(contexto)) {
+            return gerarPdfInadimplencia(gerarRelatorioInadimplencia());
+        }
+
+        List<TransacaoRelatorioDto> dados;
         if ("VENDAS".equalsIgnoreCase(contexto)) {
             dados = vendaRepository.findAll(criarSpecVenda(getTenantId(), termo, dataInicio, dataFim), Sort.by(Sort.Direction.DESC, "data"))
                     .stream().map(this::mapearVenda).toList();
@@ -70,37 +104,11 @@ public class RelatorioAvancadoService {
             dados = fluxoCaixaRepository.findAll(criarSpecFluxo(getTenantId(), termo, dataInicio, dataFim, tipo, categoria), Sort.by(Sort.Direction.DESC, "dataHora"))
                     .stream().map(this::mapearFluxo).toList();
         }
-
         return gerarDocumentoPdf(dados, contexto);
     }
 
     // ==========================================
-    // TRADUTOR DE ORDENAÇÃO (O SEGREDO AQUI!)
-    // ==========================================
-    private Pageable adaptarPageableParaVenda(Pageable pageable) {
-        if (pageable.getSort().isUnsorted()) {
-            return pageable;
-        }
-
-        List<Sort.Order> novasOrdens = new ArrayList<>();
-        for (Sort.Order order : pageable.getSort()) {
-            String prop = order.getProperty();
-
-            // Intercepta e traduz o nome da coluna
-            if ("dataHora".equals(prop)) {
-                prop = "data";
-            } else if ("valor".equals(prop)) {
-                prop = "valorTotal";
-            }
-
-            novasOrdens.add(new Sort.Order(order.getDirection(), prop));
-        }
-
-        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(novasOrdens));
-    }
-
-    // ==========================================
-    // GERAÇÃO DO ARQUIVO PDF (OPENPDF)
+    // MÉTODOS DE DESENHO DE PDF
     // ==========================================
     private byte[] gerarDocumentoPdf(List<TransacaoRelatorioDto> dados, String contexto) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -169,9 +177,90 @@ public class RelatorioAvancadoService {
         }
     }
 
+    private byte[] gerarPdfRanking(List<RankingVendasDto> dados) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            Document doc = new Document(PageSize.A4);
+            PdfWriter.getInstance(doc, baos);
+            doc.open();
+
+            Paragraph titulo = new Paragraph("Ranking de Vendas por Receita", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18));
+            titulo.setSpacingAfter(20);
+            doc.add(titulo);
+
+            PdfPTable table = new PdfPTable(3);
+            table.setWidthPercentage(100);
+            table.addCell("Produto");
+            table.addCell("Quantidade Vendida");
+            table.addCell("Receita Total");
+
+            for (RankingVendasDto item : dados) {
+                table.addCell(item.produtoNome());
+                table.addCell(item.quantidadeVendida().toString() + " un.");
+                table.addCell(NumberFormat.getCurrencyInstance(new Locale("pt", "BR")).format(item.receitaTotal()));
+            }
+            doc.add(table);
+            doc.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new RegraNegocioException("Erro ao gerar PDF de Ranking");
+        }
+    }
+
+    private byte[] gerarPdfInadimplencia(List<InadimplenciaDto> dados) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            Document doc = new Document(PageSize.A4);
+            PdfWriter.getInstance(doc, baos);
+            doc.open();
+
+            Paragraph titulo = new Paragraph("Relatório de Inadimplência e Contas a Receber", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18));
+            titulo.setSpacingAfter(20);
+            doc.add(titulo);
+
+            PdfPTable table = new PdfPTable(4);
+            table.setWidthPercentage(100);
+            table.addCell("Cliente");
+            table.addCell("Vencimento");
+            table.addCell("Dias de Atraso");
+            table.addCell("Valor Devido");
+
+            BigDecimal totalDevido = BigDecimal.ZERO;
+
+            for (InadimplenciaDto item : dados) {
+                table.addCell(item.clienteNome());
+                table.addCell(item.dataVencimento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+                table.addCell(item.diasAtraso() > 0 ? item.diasAtraso() + " dias" : "No prazo");
+                table.addCell(NumberFormat.getCurrencyInstance(new Locale("pt", "BR")).format(item.valorDevido()));
+                totalDevido = totalDevido.add(item.valorDevido());
+            }
+            doc.add(table);
+
+            Paragraph resumo = new Paragraph("Montante Total em Risco: " + NumberFormat.getCurrencyInstance(new Locale("pt", "BR")).format(totalDevido), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14));
+            resumo.setAlignment(Element.ALIGN_RIGHT);
+            resumo.setSpacingBefore(20f);
+            doc.add(resumo);
+
+            doc.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new RegraNegocioException("Erro ao gerar PDF de Inadimplência");
+        }
+    }
+
     // ==========================================
-    // HELPERS E MAPEADORES
+    // TRADUTOR DE ORDENAÇÃO E HELPERS
     // ==========================================
+    private Pageable adaptarPageableParaVenda(Pageable pageable) {
+        if (pageable.getSort().isUnsorted()) return pageable;
+        List<Sort.Order> novasOrdens = new ArrayList<>();
+        for (Sort.Order order : pageable.getSort()) {
+            String prop = order.getProperty();
+            if ("dataHora".equals(prop)) prop = "data";
+            else if ("valor".equals(prop)) prop = "valorTotal";
+            novasOrdens.add(new Sort.Order(order.getDirection(), prop));
+        }
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(novasOrdens));
+    }
+
     private TransacaoRelatorioDto mapearFluxo(FluxoCaixa f) {
         BigDecimal valorAbsoluto = f.getValor() != null ? f.getValor().abs() : BigDecimal.ZERO;
         return new TransacaoRelatorioDto(
@@ -193,15 +282,11 @@ public class RelatorioAvancadoService {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("empresa").get("id"), tenantId));
-
-            if (termo != null && !termo.isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("descricao")), "%" + termo.toLowerCase() + "%"));
-            }
+            if (termo != null && !termo.isBlank()) predicates.add(cb.like(cb.lower(root.get("descricao")), "%" + termo.toLowerCase() + "%"));
             if (dataInicio != null) predicates.add(cb.greaterThanOrEqualTo(root.get("dataHora"), dataInicio.atStartOfDay()));
             if (dataFim != null) predicates.add(cb.lessThanOrEqualTo(root.get("dataHora"), dataFim.atTime(LocalTime.MAX)));
             if (tipo != null && !tipo.isBlank()) predicates.add(cb.equal(cb.upper(root.get("tipo").as(String.class)), tipo.toUpperCase()));
             if (categoria != null && !categoria.isBlank()) predicates.add(cb.equal(cb.upper(root.get("categoriaFluxo").as(String.class)), categoria.toUpperCase()));
-
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
@@ -210,7 +295,6 @@ public class RelatorioAvancadoService {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("empresa").get("id"), tenantId));
-
             if (termo != null && !termo.isBlank()) {
                 String likePattern = "%" + termo.toLowerCase() + "%";
                 Predicate nomeCliente = cb.like(cb.lower(root.get("cliente")), likePattern);
@@ -219,7 +303,6 @@ public class RelatorioAvancadoService {
             }
             if (dataInicio != null) predicates.add(cb.greaterThanOrEqualTo(root.get("data"), dataInicio.atStartOfDay()));
             if (dataFim != null) predicates.add(cb.lessThanOrEqualTo(root.get("data"), dataFim.atTime(LocalTime.MAX)));
-
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }

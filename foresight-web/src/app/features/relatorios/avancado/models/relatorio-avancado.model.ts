@@ -35,3 +35,12 @@ export interface FiltroRelatorio {
   size: number;
   sort?: string;
 }
+
+export interface InadimplenciaRelatorio {
+  vendaId: number;
+  clienteNome: string;
+  dataVencimento: string;
+  diasAtraso: number;
+  valorDevido: number;
+  status: string;
+}

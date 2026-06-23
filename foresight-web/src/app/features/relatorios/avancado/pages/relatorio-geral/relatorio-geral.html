@@ -5,13 +5,18 @@
       <h3 class="fw-bold text-dark m-0 tracking-tight">Análise Avançada</h3>
       <p class="text-muted small mb-0">Cruze dados de movimentação para tomada de decisão.</p>
     </div>
-    <button *ngIf="tipoRelatorioSelecionado() !== 'RANKING'" class="btn btn-dark fw-bold shadow-sm" (click)="exportar()" [disabled]="loading() || exportando() || dados().length === 0">
+    <button class="btn btn-dark fw-bold shadow-sm" (click)="exportar()"
+            [disabled]="loading() || exportando() ||
+                        (tipoRelatorioSelecionado() === 'FLUXO' && dados().length === 0) ||
+                        (tipoRelatorioSelecionado() === 'VENDAS' && dados().length === 0) ||
+                        (tipoRelatorioSelecionado() === 'RANKING' && dadosRanking().length === 0) ||
+                        (tipoRelatorioSelecionado() === 'INADIMPLENCIA' && dadosInadimplencia().length === 0)">
       <span *ngIf="exportando()" class="spinner-border spinner-border-sm me-2"></span>
       <i *ngIf="!exportando()" class="bi bi-file-earmark-pdf me-2 text-danger"></i> Exportar PDF
     </button>
   </div>
 
-  <ul class="nav nav-tabs mb-4 border-bottom-0">
+  <ul class="nav nav-tabs mb-4 border-bottom-0 flex-nowrap overflow-auto" style="white-space: nowrap;">
     <li class="nav-item">
       <button class="nav-link text-dark fw-bold px-4 py-2 border-0 border-bottom border-3"
               [ngClass]="tipoRelatorioSelecionado() === 'FLUXO' ? 'border-dark active-tab' : 'border-transparent text-muted'"
@@ -27,9 +32,14 @@
               [ngClass]="tipoRelatorioSelecionado() === 'RANKING' ? 'border-dark active-tab' : 'border-transparent text-muted'"
               (click)="trocarContexto('RANKING')">Ranking de Vendas</button>
     </li>
+    <li class="nav-item">
+      <button class="nav-link text-dark fw-bold px-4 py-2 border-0 border-bottom border-3"
+              [ngClass]="tipoRelatorioSelecionado() === 'INADIMPLENCIA' ? 'border-danger text-danger active-tab' : 'border-transparent text-muted'"
+              (click)="trocarContexto('INADIMPLENCIA')"><i class="bi bi-exclamation-triangle me-1"></i>Inadimplência</button>
+    </li>
   </ul>
 
-  <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white p-4" *ngIf="tipoRelatorioSelecionado() !== 'RANKING'">
+  <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white p-4" *ngIf="tipoRelatorioSelecionado() === 'FLUXO' || tipoRelatorioSelecionado() === 'VENDAS'">
     <form [formGroup]="filtrosForm" class="row g-3 align-items-end">
 
       <div class="col-md-3">
@@ -82,7 +92,7 @@
       <div class="spinner-border text-success" role="status"></div>
     </div>
 
-    <div *ngIf="tipoRelatorioSelecionado() !== 'RANKING'" class="table-responsive">
+    <div *ngIf="tipoRelatorioSelecionado() === 'FLUXO' || tipoRelatorioSelecionado() === 'VENDAS'" class="table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light text-muted small text-uppercase">
         <tr>
@@ -123,9 +133,7 @@
       </table>
 
       <div class="card-footer bg-white border-top p-3 d-flex justify-content-between align-items-center">
-        <span class="text-muted small fw-medium">
-          Mostrando {{ dados().length }} de {{ totalElementos() }} registros
-        </span>
+        <span class="text-muted small fw-medium">Mostrando {{ dados().length }} de {{ totalElementos() }} registros</span>
         <nav>
           <ul class="pagination pagination-sm m-0 gap-1">
             <li class="page-item" [class.disabled]="paginaAtual() === 0">
@@ -154,23 +162,66 @@
         </thead>
         <tbody class="small border-top-0">
         <tr *ngFor="let item of dadosRanking(); let i = index">
-          <td class="ps-4 py-3">
-            <span class="badge bg-dark rounded-pill fs-6 px-3">{{ i + 1 }}º</span>
-          </td>
+          <td class="ps-4 py-3"><span class="badge bg-dark rounded-pill fs-6 px-3">{{ i + 1 }}º</span></td>
           <td class="fw-bold text-dark py-3 fs-6">{{ item.produtoNome }}</td>
           <td class="text-center text-muted fw-medium py-3">{{ item.quantidadeVendida }} un.</td>
-          <td class="text-end fw-bolder text-success fs-5 pe-4 py-3">
-            {{ item.receitaTotal | brFmt:'moeda' }}
-          </td>
+          <td class="text-end fw-bolder text-success fs-5 pe-4 py-3">{{ item.receitaTotal | brFmt:'moeda' }}</td>
         </tr>
         <tr *ngIf="dadosRanking().length === 0 && !loading()">
           <td colspan="4" class="text-center py-5 text-muted">
-            <i class="bi bi-box-seam fs-1 d-block mb-3 opacity-25"></i>
-            Nenhuma venda registrada até o momento.
+            <i class="bi bi-box-seam fs-1 d-block mb-3 opacity-25"></i> Nenhuma venda registrada até o momento.
           </td>
         </tr>
         </tbody>
       </table>
+    </div>
+
+    <div *ngIf="tipoRelatorioSelecionado() === 'INADIMPLENCIA'">
+      <div class="bg-danger bg-opacity-10 p-3 border-bottom border-danger border-opacity-25 d-flex justify-content-between align-items-center">
+        <div>
+          <h6 class="text-danger fw-bold m-0"><i class="bi bi-exclamation-octagon me-2"></i>Contas a Receber / Em Atraso</h6>
+          <small class="text-danger opacity-75">Valores de vendas confirmadas pendentes de liquidação pelo cliente.</small>
+        </div>
+        <div class="text-end">
+          <small class="text-danger fw-bold text-uppercase d-block tracking-wider">Montante em Risco</small>
+          <span class="fs-4 fw-bold text-danger">{{ totalEmRisco() | brFmt:'moeda' }}</span>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light text-muted small text-uppercase">
+          <tr>
+            <th class="border-bottom-0 py-3 ps-4">Ref. Venda</th>
+            <th class="border-bottom-0 py-3">Cliente</th>
+            <th class="border-bottom-0 py-3 text-center">Vencimento</th>
+            <th class="border-bottom-0 py-3 text-center">Dias de Atraso</th>
+            <th class="border-bottom-0 py-3 pe-4 text-end">Valor Devido</th>
+          </tr>
+          </thead>
+          <tbody class="small border-top-0">
+          <tr *ngFor="let item of dadosInadimplencia()" [ngClass]="{'bg-danger bg-opacity-10': item.diasAtraso > 0}">
+            <td class="ps-4 py-3"><span class="text-muted fw-bold">#{{ item.vendaId }}</span></td>
+            <td class="fw-bold text-dark py-3">{{ item.clienteNome }}</td>
+            <td class="text-center text-muted fw-medium py-3">{{ item.dataVencimento | brFmt:'data' }}</td>
+            <td class="text-center py-3">
+              <span class="badge" [ngClass]="item.diasAtraso > 0 ? 'bg-danger' : 'bg-warning text-dark'">
+                {{ item.diasAtraso > 0 ? item.diasAtraso + ' dias' : 'No Prazo' }}
+              </span>
+            </td>
+            <td class="text-end fw-bolder fs-6 pe-4 py-3" [ngClass]="item.diasAtraso > 0 ? 'text-danger' : 'text-dark'">
+              {{ item.valorDevido | brFmt:'moeda' }}
+            </td>
+          </tr>
+          <tr *ngIf="dadosInadimplencia().length === 0 && !loading()">
+            <td colspan="5" class="text-center py-5 text-success">
+              <i class="bi bi-shield-check fs-1 d-block mb-3"></i>
+              Excelente! Nenhum cliente com fatura pendente.
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
   </div>

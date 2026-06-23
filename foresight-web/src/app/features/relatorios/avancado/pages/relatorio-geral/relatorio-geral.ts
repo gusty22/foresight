@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { RelatorioAvancadoService } from '../../services/relatorio-avancado.service';
-import { FiltroRelatorio, TransacaoRelatorio, RankingVendas } from '../../models/relatorio-avancado.model';
+import { FiltroRelatorio, TransacaoRelatorio, RankingVendas, InadimplenciaRelatorio } from '../../models/relatorio-avancado.model';
 import { BrMaskPipe } from '../../../../../shared/pipes/br-mask.pipe';
 
 @Component({
@@ -20,7 +20,9 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   dados = signal<TransacaoRelatorio[]>([]);
-  dadosRanking = signal<RankingVendas[]>([]); // SINAL PARA O RANKING
+  dadosRanking = signal<RankingVendas[]>([]);
+  dadosInadimplencia = signal<InadimplenciaRelatorio[]>([]);
+
   totalElementos = signal<number>(0);
   loading = signal<boolean>(false);
   exportando = signal<boolean>(false);
@@ -29,7 +31,7 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   tamanhoPagina = signal<number>(10);
   ordenarPor = signal<string>('dataHora');
   direcaoOrdem = signal<'asc' | 'desc'>('desc');
-  tipoRelatorioSelecionado = signal<'FLUXO' | 'VENDAS' | 'RANKING'>('FLUXO'); // NOVA ABA ADICIONADA
+  tipoRelatorioSelecionado = signal<'FLUXO' | 'VENDAS' | 'RANKING' | 'INADIMPLENCIA'>('FLUXO');
 
   filtrosForm: FormGroup = this.fb.group({
     termoBusca: [''],
@@ -40,6 +42,7 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   });
 
   totalPaginas = computed(() => Math.ceil(this.totalElementos() / this.tamanhoPagina()));
+  totalEmRisco = computed(() => this.dadosInadimplencia().reduce((acc, curr) => acc + curr.valorDevido, 0));
 
   ngOnInit() {
     this.filtrosForm.valueChanges
@@ -61,13 +64,14 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  trocarContexto(tipo: 'FLUXO' | 'VENDAS' | 'RANKING') {
+  trocarContexto(tipo: 'FLUXO' | 'VENDAS' | 'RANKING' | 'INADIMPLENCIA') {
     if (this.tipoRelatorioSelecionado() === tipo) return;
 
     this.tipoRelatorioSelecionado.set(tipo);
     this.paginaAtual.set(0);
     this.dados.set([]);
     this.dadosRanking.set([]);
+    this.dadosInadimplencia.set([]);
 
     this.filtrosForm.reset({ termoBusca: '', dataInicio: '', dataFim: '', tipo: '', categoria: '' }, { emitEvent: false });
     this.carregarRelatorio();
@@ -76,7 +80,6 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   carregarRelatorio() {
     this.loading.set(true);
 
-    // SE A ABA FOR RANKING, CHAMA A ROTA ESPECÍFICA
     if (this.tipoRelatorioSelecionado() === 'RANKING') {
       this.relatorioService.buscarRanking().subscribe({
         next: (res) => {
@@ -88,7 +91,17 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // SE FOR FLUXO OU VENDAS, CONTINUA COM A LÓGICA ANTIGA DE PAGINAÇÃO
+    if (this.tipoRelatorioSelecionado() === 'INADIMPLENCIA') {
+      this.relatorioService.buscarInadimplencia().subscribe({
+        next: (res) => {
+          this.dadosInadimplencia.set(res.data || []);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false)
+      });
+      return;
+    }
+
     const formValues = this.filtrosForm.value;
     const filtro: FiltroRelatorio = {
       contexto: this.tipoRelatorioSelecionado(),
@@ -115,14 +128,9 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   }
 
   exportar() {
-    // Bloqueia a exportação se for a aba de Ranking (o MVP não exige PDF de ranking)
-    if (this.tipoRelatorioSelecionado() === 'RANKING') {
-      alert("A exportação PDF está disponível apenas para as abas Analíticas (Fluxo e Vendas).");
-      return;
-    }
-
     this.exportando.set(true);
     const formValues = this.filtrosForm.value;
+
     const filtro: FiltroRelatorio = {
       ...formValues,
       contexto: this.tipoRelatorioSelecionado(),

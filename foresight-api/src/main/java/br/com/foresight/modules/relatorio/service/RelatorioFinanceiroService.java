@@ -9,10 +9,7 @@ import br.com.foresight.modules.financeiro.despesa.entity.Despesa;
 import br.com.foresight.modules.financeiro.despesa.repository.IDespesaRepository;
 import br.com.foresight.modules.financeiro.fluxo_caixa.entity.CategoriaFluxo;
 import br.com.foresight.modules.financeiro.fluxo_caixa.repository.IFluxoCaixaRepository;
-import br.com.foresight.modules.relatorio.dto.DreDto;
-import br.com.foresight.modules.relatorio.dto.LucratividadeDto;
-import br.com.foresight.modules.relatorio.dto.RankingVendasDto;
-import br.com.foresight.modules.relatorio.dto.RelatorioSaudeDto;
+import br.com.foresight.modules.relatorio.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -212,5 +209,38 @@ public class RelatorioFinanceiroService {
     public List<RankingVendasDto> gerarRankingVendas() {
         Long tenantId = getTenantIdSeguro();
         return vendaRepository.rankingDeVendasPorReceita(tenantId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InadimplenciaDto> gerarRelatorioInadimplencia() {
+        Long tenantId = getTenantIdSeguro();
+        LocalDate hoje = LocalDate.now();
+
+        return vendaRepository.findAllByEmpresaIdOrderByDataDesc(tenantId).stream()
+                // Filtra apenas o que não foi pago e não foi cancelado
+                .filter(v -> v.getStatusPagamento() != null &&
+                        !v.getStatusPagamento().equalsIgnoreCase("PAGO") &&
+                        !v.getStatusPagamento().equalsIgnoreCase("CANCELADO"))
+                .map(v -> {
+                    // Pega a data de previsão ou a própria data da venda como fallback
+                    LocalDate vencimento = v.getDataPrevisaoPagamento() != null ?
+                            v.getDataPrevisaoPagamento() : v.getData().toLocalDate();
+
+                    long dias = java.time.temporal.ChronoUnit.DAYS.between(vencimento, hoje);
+                    long diasAtraso = Math.max(dias, 0); // Se for negativo (a vencer), o atraso é 0
+                    String statusReal = dias > 0 ? "ATRASADO" : "A VENCER";
+
+                    return new InadimplenciaDto(
+                            v.getId(),
+                            v.getCliente(),
+                            vencimento,
+                            diasAtraso,
+                            v.getValorTotal(),
+                            statusReal
+                    );
+                })
+                // Ordena trazendo os maiores atrasos (piores clientes) para o topo da lista
+                .sorted(java.util.Comparator.comparing(InadimplenciaDto::diasAtraso).reversed())
+                .toList();
     }
 }
