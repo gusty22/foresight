@@ -14,6 +14,7 @@ export class RelatorioAvancadoService {
       .set('page', filtro.page.toString())
       .set('size', filtro.size.toString());
 
+    if (filtro.contexto) params = params.set('contexto', filtro.contexto); // Garante a separação das abas
     if (filtro.termoBusca) params = params.set('termo', filtro.termoBusca);
     if (filtro.dataInicio) params = params.set('dataInicio', filtro.dataInicio);
     if (filtro.dataFim) params = params.set('dataFim', filtro.dataFim);

@@ -28,7 +28,7 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   tamanhoPagina = signal<number>(10);
   ordenarPor = signal<string>('dataHora');
   direcaoOrdem = signal<'asc' | 'desc'>('desc');
-  tipoRelatorioSelecionado = signal<'FLUXO' | 'VENDAS' | 'DESPESAS'>('FLUXO');
+  tipoRelatorioSelecionado = signal<'FLUXO' | 'VENDAS'>('FLUXO');
 
   filtrosForm: FormGroup = this.fb.group({
     termoBusca: [''],
@@ -43,7 +43,7 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.filtrosForm.valueChanges
       .pipe(
-        debounceTime(600),
+        debounceTime(400), // Reduzido para deixar a digitação mais "responsiva"
         distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
         takeUntil(this.destroy$)
       )
@@ -60,9 +60,21 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  trocarContexto(tipo: 'FLUXO' | 'VENDAS' | 'DESPESAS') {
+  trocarContexto(tipo: 'FLUXO' | 'VENDAS') {
+    // Impede o recarregamento inútil se o usuário clicar na aba que já está ativa
+    if (this.tipoRelatorioSelecionado() === tipo) return;
+
     this.tipoRelatorioSelecionado.set(tipo);
-    this.limparFiltros();
+    this.paginaAtual.set(0);
+
+    // Limpa a tabela imediatamente na tela para não mostrar dados antigos enquanto a API pensa
+    this.dados.set([]);
+
+    // O { emitEvent: false } é a mágica! Ele limpa o form sem disparar o delay de 400ms do debounceTime
+    this.filtrosForm.reset({ termoBusca: '', dataInicio: '', dataFim: '', tipo: '', categoria: '' }, { emitEvent: false });
+
+    // Chama a API instantaneamente, criando a percepção de performance máxima
+    this.carregarRelatorio();
   }
 
   carregarRelatorio() {
@@ -70,6 +82,7 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
 
     const formValues = this.filtrosForm.value;
     const filtro: FiltroRelatorio = {
+      contexto: this.tipoRelatorioSelecionado(), // Captura a Aba atual
       termoBusca: formValues.termoBusca,
       dataInicio: formValues.dataInicio,
       dataFim: formValues.dataFim,
@@ -94,6 +107,35 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
     });
   }
 
+  exportar() {
+    this.exportando.set(true);
+    const formValues = this.filtrosForm.value;
+
+    // Captura a Aba atual para o Backend saber desenhar o PDF correto
+    const filtro: FiltroRelatorio = {
+      ...formValues,
+      contexto: this.tipoRelatorioSelecionado(),
+      page: 0,
+      size: 5000
+    };
+
+    this.relatorioService.exportarPdf(filtro).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio_${this.tipoRelatorioSelecionado().toLowerCase()}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.exportando.set(false);
+      },
+      error: () => {
+        this.exportando.set(false);
+        alert('Erro ao gerar relatório.');
+      }
+    });
+  }
+
   mudarPagina(novaPagina: number) {
     if (novaPagina >= 0 && novaPagina < this.totalPaginas()) {
       this.paginaAtual.set(novaPagina);
@@ -112,28 +154,9 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   }
 
   limparFiltros() {
-    this.filtrosForm.reset({ termoBusca: '', dataInicio: '', dataFim: '', tipo: '', categoria: '' });
-  }
-
-  exportar() {
-    this.exportando.set(true);
-    const formValues = this.filtrosForm.value;
-    const filtro: FiltroRelatorio = { ...formValues, page: 0, size: 5000 };
-
-    this.relatorioService.exportarPdf(filtro).subscribe({
-      next: (blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'relatorio_financeiro.pdf';
-        a.click();
-        window.URL.revokeObjectURL(url);
-        this.exportando.set(false);
-      },
-      error: () => {
-        this.exportando.set(false);
-        alert('Erro ao gerar relatório.');
-      }
-    });
+    // Também adicionamos o emitEvent: false aqui para o botão de "Limpar Filtros" ficar rápido
+    this.filtrosForm.reset({ termoBusca: '', dataInicio: '', dataFim: '', tipo: '', categoria: '' }, { emitEvent: false });
+    this.paginaAtual.set(0);
+    this.carregarRelatorio();
   }
 }

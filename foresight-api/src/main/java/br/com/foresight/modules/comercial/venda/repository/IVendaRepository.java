@@ -3,6 +3,7 @@ package br.com.foresight.modules.comercial.venda.repository;
 import br.com.foresight.modules.comercial.venda.entity.Venda;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor; // <-- Import adicionado
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface IVendaRepository extends JpaRepository<Venda, Long> {
+public interface IVendaRepository extends JpaRepository<Venda, Long>, JpaSpecificationExecutor<Venda> { // <-- Interface adicionada aqui
 
     List<Venda> findAllByEmpresaIdOrderByDataDesc(Long empresaId);
 

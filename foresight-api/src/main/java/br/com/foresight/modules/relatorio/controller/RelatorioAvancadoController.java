@@ -21,6 +21,7 @@ public class RelatorioAvancadoController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TransacaoRelatorioDto>>> buscar(
+            @RequestParam(value = "contexto", required = false, defaultValue = "FLUXO") String contexto,
             @RequestParam(required = false) String termo,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
@@ -29,21 +30,22 @@ public class RelatorioAvancadoController {
             Pageable pageable) {
 
         return ResponseEntity.ok(ApiResponse.success(
-                service.buscarDados(termo, dataInicio, dataFim, tipo, categoria, pageable)
+                service.buscarDados(contexto, termo, dataInicio, dataFim, tipo, categoria, pageable)
         ));
     }
 
     @GetMapping(value = "/export/pdf", produces = "application/pdf")
     public ResponseEntity<byte[]> exportarPdf(
+            @RequestParam(value = "contexto", required = false, defaultValue = "FLUXO") String contexto,
             @RequestParam(required = false) String termo,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
             @RequestParam(required = false) String tipo,
             @RequestParam(required = false) String categoria) {
 
-        byte[] pdf = service.exportarParaPdf(termo, dataInicio, dataFim, tipo, categoria);
+        byte[] pdf = service.exportarParaPdf(contexto, termo, dataInicio, dataFim, tipo, categoria);
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=relatorio.pdf")
+                .header("Content-Disposition", "attachment; filename=relatorio_avancado.pdf")
                 .body(pdf);
     }
 }

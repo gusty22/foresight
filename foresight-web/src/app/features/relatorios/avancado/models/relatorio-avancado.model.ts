@@ -18,6 +18,7 @@ export interface TransacaoRelatorio {
 }
 
 export interface FiltroRelatorio {
+  contexto?: string; // NOVO: Para saber qual aba estamos
   termoBusca?: string | null;
   dataInicio?: string | null;
   dataFim?: string | null;
