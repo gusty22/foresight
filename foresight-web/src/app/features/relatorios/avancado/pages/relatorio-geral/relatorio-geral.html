@@ -5,7 +5,7 @@
       <h3 class="fw-bold text-dark m-0 tracking-tight">Análise Avançada</h3>
       <p class="text-muted small mb-0">Cruze dados de movimentação para tomada de decisão.</p>
     </div>
-    <button class="btn btn-dark fw-bold shadow-sm" (click)="exportar()" [disabled]="loading() || exportando() || dados().length === 0">
+    <button *ngIf="tipoRelatorioSelecionado() !== 'RANKING'" class="btn btn-dark fw-bold shadow-sm" (click)="exportar()" [disabled]="loading() || exportando() || dados().length === 0">
       <span *ngIf="exportando()" class="spinner-border spinner-border-sm me-2"></span>
       <i *ngIf="!exportando()" class="bi bi-file-earmark-pdf me-2 text-danger"></i> Exportar PDF
     </button>
@@ -22,9 +22,14 @@
               [ngClass]="tipoRelatorioSelecionado() === 'VENDAS' ? 'border-dark active-tab' : 'border-transparent text-muted'"
               (click)="trocarContexto('VENDAS')">Vendas & Clientes</button>
     </li>
+    <li class="nav-item">
+      <button class="nav-link text-dark fw-bold px-4 py-2 border-0 border-bottom border-3"
+              [ngClass]="tipoRelatorioSelecionado() === 'RANKING' ? 'border-dark active-tab' : 'border-transparent text-muted'"
+              (click)="trocarContexto('RANKING')">Ranking de Vendas</button>
+    </li>
   </ul>
 
-  <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white p-4">
+  <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white p-4" *ngIf="tipoRelatorioSelecionado() !== 'RANKING'">
     <form [formGroup]="filtrosForm" class="row g-3 align-items-end">
 
       <div class="col-md-3">
@@ -77,7 +82,7 @@
       <div class="spinner-border text-success" role="status"></div>
     </div>
 
-    <div class="table-responsive">
+    <div *ngIf="tipoRelatorioSelecionado() !== 'RANKING'" class="table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light text-muted small text-uppercase">
         <tr>
@@ -94,25 +99,20 @@
         </thead>
         <tbody class="small border-top-0">
         <tr *ngFor="let item of dados()">
-
           <td class="text-muted fw-medium ps-4 py-3">{{ item.data | brFmt:'dataHora' }}</td>
-
           <td class="fw-bold text-dark py-3">{{ item.descricao }}</td>
           <td class="py-3" *ngIf="tipoRelatorioSelecionado() === 'FLUXO'">
             <span class="badge bg-light text-secondary border">{{ item.categoria }}</span>
           </td>
           <td class="text-center py-3">
-              <span class="badge rounded-pill" [ngClass]="item.status === 'CONSOLIDADO' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'">
+              <span class="badge rounded-pill" [ngClass]="item.status === 'CONSOLIDADO' || item.status === 'PAGO' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'">
                 <i class="bi bi-circle-fill" style="font-size: 6px; margin-right: 4px;"></i> {{ item.status }}
               </span>
           </td>
-
           <td class="text-end fw-bolder fs-6 pe-4 py-3" [ngClass]="item.tipo === 'ENTRADA' ? 'text-success' : 'text-danger'">
             {{ item.tipo === 'ENTRADA' ? '+' : '-' }} {{ item.valor | brFmt:'moeda' }}
           </td>
-
         </tr>
-
         <tr *ngIf="dados().length === 0 && !loading()">
           <td colspan="5" class="text-center py-5 text-muted">
             <i class="bi bi-funnel fs-1 d-block mb-3 opacity-25"></i>
@@ -121,25 +121,56 @@
         </tr>
         </tbody>
       </table>
+
+      <div class="card-footer bg-white border-top p-3 d-flex justify-content-between align-items-center">
+        <span class="text-muted small fw-medium">
+          Mostrando {{ dados().length }} de {{ totalElementos() }} registros
+        </span>
+        <nav>
+          <ul class="pagination pagination-sm m-0 gap-1">
+            <li class="page-item" [class.disabled]="paginaAtual() === 0">
+              <button class="page-link border-0 text-dark fw-bold rounded-2 px-3" (click)="mudarPagina(paginaAtual() - 1)">Anterior</button>
+            </li>
+            <li class="page-item disabled d-flex align-items-center px-2">
+              <span class="small text-muted">Pág. {{ paginaAtual() + 1 }} de {{ totalPaginas() || 1 }}</span>
+            </li>
+            <li class="page-item" [class.disabled]="paginaAtual() + 1 >= totalPaginas()">
+              <button class="page-link border-0 text-dark fw-bold rounded-2 px-3" (click)="mudarPagina(paginaAtual() + 1)">Próxima</button>
+            </li>
+          </ul>
+        </nav>
+      </div>
     </div>
 
-    <div class="card-footer bg-white border-top p-3 d-flex justify-content-between align-items-center">
-      <span class="text-muted small fw-medium">
-        Mostrando {{ dados().length }} de {{ totalElementos() }} registros
-      </span>
-      <nav>
-        <ul class="pagination pagination-sm m-0 gap-1">
-          <li class="page-item" [class.disabled]="paginaAtual() === 0">
-            <button class="page-link border-0 text-dark fw-bold rounded-2 px-3" (click)="mudarPagina(paginaAtual() - 1)">Anterior</button>
-          </li>
-          <li class="page-item disabled d-flex align-items-center px-2">
-            <span class="small text-muted">Pág. {{ paginaAtual() + 1 }} de {{ totalPaginas() || 1 }}</span>
-          </li>
-          <li class="page-item" [class.disabled]="paginaAtual() + 1 >= totalPaginas()">
-            <button class="page-link border-0 text-dark fw-bold rounded-2 px-3" (click)="mudarPagina(paginaAtual() + 1)">Próxima</button>
-          </li>
-        </ul>
-      </nav>
+    <div *ngIf="tipoRelatorioSelecionado() === 'RANKING'" class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light text-muted small text-uppercase">
+        <tr>
+          <th class="border-bottom-0 py-3 ps-4" style="width: 80px;">Posição</th>
+          <th class="border-bottom-0 py-3">Produto</th>
+          <th class="border-bottom-0 py-3 text-center">Unidades Vendidas</th>
+          <th class="border-bottom-0 py-3 pe-4 text-end">Receita Total</th>
+        </tr>
+        </thead>
+        <tbody class="small border-top-0">
+        <tr *ngFor="let item of dadosRanking(); let i = index">
+          <td class="ps-4 py-3">
+            <span class="badge bg-dark rounded-pill fs-6 px-3">{{ i + 1 }}º</span>
+          </td>
+          <td class="fw-bold text-dark py-3 fs-6">{{ item.produtoNome }}</td>
+          <td class="text-center text-muted fw-medium py-3">{{ item.quantidadeVendida }} un.</td>
+          <td class="text-end fw-bolder text-success fs-5 pe-4 py-3">
+            {{ item.receitaTotal | brFmt:'moeda' }}
+          </td>
+        </tr>
+        <tr *ngIf="dadosRanking().length === 0 && !loading()">
+          <td colspan="4" class="text-center py-5 text-muted">
+            <i class="bi bi-box-seam fs-1 d-block mb-3 opacity-25"></i>
+            Nenhuma venda registrada até o momento.
+          </td>
+        </tr>
+        </tbody>
+      </table>
     </div>
 
   </div>

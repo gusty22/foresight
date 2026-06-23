@@ -17,8 +17,15 @@ export interface TransacaoRelatorio {
   status: string;
 }
 
+// NOVO DTO PARA O RANKING
+export interface RankingVendas {
+  produtoNome: string;
+  quantidadeVendida: number;
+  receitaTotal: number;
+}
+
 export interface FiltroRelatorio {
-  contexto?: string; // NOVO: Para saber qual aba estamos
+  contexto?: string;
   termoBusca?: string | null;
   dataInicio?: string | null;
   dataFim?: string | null;

@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { RelatorioAvancadoService } from '../../services/relatorio-avancado.service';
-import { FiltroRelatorio, TransacaoRelatorio } from '../../models/relatorio-avancado.model';
+import { FiltroRelatorio, TransacaoRelatorio, RankingVendas } from '../../models/relatorio-avancado.model';
 import { BrMaskPipe } from '../../../../../shared/pipes/br-mask.pipe';
 
 @Component({
@@ -20,6 +20,7 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   dados = signal<TransacaoRelatorio[]>([]);
+  dadosRanking = signal<RankingVendas[]>([]); // SINAL PARA O RANKING
   totalElementos = signal<number>(0);
   loading = signal<boolean>(false);
   exportando = signal<boolean>(false);
@@ -28,7 +29,7 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   tamanhoPagina = signal<number>(10);
   ordenarPor = signal<string>('dataHora');
   direcaoOrdem = signal<'asc' | 'desc'>('desc');
-  tipoRelatorioSelecionado = signal<'FLUXO' | 'VENDAS'>('FLUXO');
+  tipoRelatorioSelecionado = signal<'FLUXO' | 'VENDAS' | 'RANKING'>('FLUXO'); // NOVA ABA ADICIONADA
 
   filtrosForm: FormGroup = this.fb.group({
     termoBusca: [''],
@@ -43,7 +44,7 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.filtrosForm.valueChanges
       .pipe(
-        debounceTime(400), // Reduzido para deixar a digitação mais "responsiva"
+        debounceTime(400),
         distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
         takeUntil(this.destroy$)
       )
@@ -60,29 +61,37 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  trocarContexto(tipo: 'FLUXO' | 'VENDAS') {
-    // Impede o recarregamento inútil se o usuário clicar na aba que já está ativa
+  trocarContexto(tipo: 'FLUXO' | 'VENDAS' | 'RANKING') {
     if (this.tipoRelatorioSelecionado() === tipo) return;
 
     this.tipoRelatorioSelecionado.set(tipo);
     this.paginaAtual.set(0);
-
-    // Limpa a tabela imediatamente na tela para não mostrar dados antigos enquanto a API pensa
     this.dados.set([]);
+    this.dadosRanking.set([]);
 
-    // O { emitEvent: false } é a mágica! Ele limpa o form sem disparar o delay de 400ms do debounceTime
     this.filtrosForm.reset({ termoBusca: '', dataInicio: '', dataFim: '', tipo: '', categoria: '' }, { emitEvent: false });
-
-    // Chama a API instantaneamente, criando a percepção de performance máxima
     this.carregarRelatorio();
   }
 
   carregarRelatorio() {
     this.loading.set(true);
 
+    // SE A ABA FOR RANKING, CHAMA A ROTA ESPECÍFICA
+    if (this.tipoRelatorioSelecionado() === 'RANKING') {
+      this.relatorioService.buscarRanking().subscribe({
+        next: (res) => {
+          this.dadosRanking.set(res.data || []);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false)
+      });
+      return;
+    }
+
+    // SE FOR FLUXO OU VENDAS, CONTINUA COM A LÓGICA ANTIGA DE PAGINAÇÃO
     const formValues = this.filtrosForm.value;
     const filtro: FiltroRelatorio = {
-      contexto: this.tipoRelatorioSelecionado(), // Captura a Aba atual
+      contexto: this.tipoRelatorioSelecionado(),
       termoBusca: formValues.termoBusca,
       dataInicio: formValues.dataInicio,
       dataFim: formValues.dataFim,
@@ -101,17 +110,19 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
         }
         this.loading.set(false);
       },
-      error: () => {
-        this.loading.set(false);
-      }
+      error: () => this.loading.set(false)
     });
   }
 
   exportar() {
+    // Bloqueia a exportação se for a aba de Ranking (o MVP não exige PDF de ranking)
+    if (this.tipoRelatorioSelecionado() === 'RANKING') {
+      alert("A exportação PDF está disponível apenas para as abas Analíticas (Fluxo e Vendas).");
+      return;
+    }
+
     this.exportando.set(true);
     const formValues = this.filtrosForm.value;
-
-    // Captura a Aba atual para o Backend saber desenhar o PDF correto
     const filtro: FiltroRelatorio = {
       ...formValues,
       contexto: this.tipoRelatorioSelecionado(),
@@ -154,7 +165,6 @@ export class RelatorioGeralComponent implements OnInit, OnDestroy {
   }
 
   limparFiltros() {
-    // Também adicionamos o emitEvent: false aqui para o botão de "Limpar Filtros" ficar rápido
     this.filtrosForm.reset({ termoBusca: '', dataInicio: '', dataFim: '', tipo: '', categoria: '' }, { emitEvent: false });
     this.paginaAtual.set(0);
     this.carregarRelatorio();

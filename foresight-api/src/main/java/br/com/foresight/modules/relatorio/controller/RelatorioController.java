@@ -3,6 +3,7 @@ package br.com.foresight.modules.relatorio.controller;
 import br.com.foresight.core.web.ApiResponse;
 import br.com.foresight.modules.relatorio.dto.DreDto;
 import br.com.foresight.modules.relatorio.dto.LucratividadeDto;
+import br.com.foresight.modules.relatorio.dto.RankingVendasDto;
 import br.com.foresight.modules.relatorio.dto.RelatorioSaudeDto;
 import br.com.foresight.modules.relatorio.service.RelatorioFinanceiroService;
 import lombok.RequiredArgsConstructor;
@@ -41,5 +42,11 @@ public class RelatorioController {
             @RequestParam(required = false) Integer ano) {
 
         return ResponseEntity.ok(ApiResponse.success(relatorioService.gerarDre(periodicidade, periodoValor, ano)));
+    }
+    // Importe a classe RankingVendasDto lá em cima!
+
+    @GetMapping("/ranking-vendas")
+    public ResponseEntity<ApiResponse<List<RankingVendasDto>>> obterRankingVendas() {
+        return ResponseEntity.ok(ApiResponse.success(relatorioService.gerarRankingVendas()));
     }
 }

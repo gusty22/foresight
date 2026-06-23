@@ -11,6 +11,7 @@ import br.com.foresight.modules.financeiro.fluxo_caixa.entity.CategoriaFluxo;
 import br.com.foresight.modules.financeiro.fluxo_caixa.repository.IFluxoCaixaRepository;
 import br.com.foresight.modules.relatorio.dto.DreDto;
 import br.com.foresight.modules.relatorio.dto.LucratividadeDto;
+import br.com.foresight.modules.relatorio.dto.RankingVendasDto;
 import br.com.foresight.modules.relatorio.dto.RelatorioSaudeDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -206,5 +207,10 @@ public class RelatorioFinanceiroService {
                 "percentualAtingido", percentual.setScale(2, RoundingMode.HALF_UP),
                 "faltamParaOLucro", faturamentoNecessario.subtract(faturamentoAtual).max(BigDecimal.ZERO)
         );
+    }
+    @Transactional(readOnly = true)
+    public List<RankingVendasDto> gerarRankingVendas() {
+        Long tenantId = getTenantIdSeguro();
+        return vendaRepository.rankingDeVendasPorReceita(tenantId);
     }
 }

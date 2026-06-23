@@ -1,6 +1,7 @@
 package br.com.foresight.modules.comercial.venda.repository;
 
 import br.com.foresight.modules.comercial.venda.entity.Venda;
+import br.com.foresight.modules.relatorio.dto.RankingVendasDto;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor; // <-- Import adicionado
@@ -35,4 +36,11 @@ public interface IVendaRepository extends JpaRepository<Venda, Long>, JpaSpecifi
     // O Dashboard continua usando o `valorTotal` (Líquido) da entidade de Venda PAGA
     @Query("SELECT COALESCE(SUM(v.valorTotal), 0) FROM Venda v WHERE v.empresa.id = :empresaId AND v.data BETWEEN :inicio AND :fim AND v.statusPagamento = 'PAGO'")
     BigDecimal somarFaturamentoPorPeriodo(@Param("empresaId") Long empresaId, @Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT new br.com.foresight.modules.relatorio.dto.RankingVendasDto(p.nome, SUM(i.quantidade), SUM(i.quantidade * i.precoUnitario)) " +
+            "FROM Venda v JOIN v.itens i JOIN i.produto p " +
+            "WHERE v.empresa.id = :empresaId AND v.statusPagamento = 'PAGO' " +
+            "GROUP BY p.nome " +
+            "ORDER BY SUM(i.quantidade * i.precoUnitario) DESC")
+    List<RankingVendasDto> rankingDeVendasPorReceita(@Param("empresaId") Long empresaId);
 }
