@@ -21,7 +21,7 @@ services:
     networks:
       foresight_net:
         aliases:
-          - db # <-- Garante que a rede interna reconheça o nome "db"
+          - db
 
   # 2. Backend (Spring Boot)
   backend:
@@ -30,8 +30,6 @@ services:
       dockerfile: Dockerfile
     container_name: foresight_api
     ports:
-      # CORREÇÃO AQUI: Expõe a API do Docker na porta 8081.
-      # Deixa a 8080 livre para você dar o Play pelo IntelliJ sem conflitos!
       - "8081:8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/foresight_db
