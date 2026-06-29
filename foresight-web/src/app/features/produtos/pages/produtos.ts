@@ -65,7 +65,6 @@ export class ProdutosComponent implements OnInit {
   }
 
   carregarApoio(): void {
-    // Categorias pré-definidas para facilitar a apresentação (Hardcoded)
     this.categorias.set([
       { id: 1, nome: 'Eletrônicos e Celulares' },
       { id: 2, nome: 'Acessórios de Informática' },
@@ -170,10 +169,10 @@ export class ProdutosComponent implements OnInit {
 
     const payload: ProdutoRequest = {
       nome: formValue.nome,
-      codigoBarras: null, // Simplificado para a apresentação
-      imagemUrl: null, // Simplificado para a apresentação
+      codigoBarras: null, 
+      imagemUrl: null, 
       categoriaId: formValue.categoriaId || null,
-      fornecedorId: null, // Não enviamos o ID pois a tela possui apenas um campo de texto agora
+      fornecedorId: null, 
       precoCusto: formValue.precoCusto || 0,
       precoVenda: formValue.precoVenda || 0,
       estoqueAtual: formValue.estoqueAtual || 0,
