@@ -7,12 +7,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableCaching // Ativa o suporte a cache no Spring
+@EnableCaching 
 public class ConfiguracaoCache {
 
     @Bean
     public CacheManager cacheManager() {
-        // Gerenciador de cache simples em memória
+        
         return new ConcurrentMapCacheManager("dashboard", "produtos", "empresas");
     }
 }
