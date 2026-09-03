@@ -115,18 +115,6 @@ Utilize as seguintes credenciais padrão para acessar a aplicação:
 
 ---
 
-## 📞 6. Contato para Suporte e Erros
-
-Em caso de dúvidas durante a avaliação, testes ou problemas na execução dos contêineres, entre em contato:
-
-| Informação | Detalhes |
-| --- | --- |
-| **Responsável** | Gustavo Henrique Vieira de Paula |
-| **E-mail** | `2416512335@aluno.imepac.edu.br` |
-| **Telefone/WhatsApp** | `(34) 99773-2860` |
-
----
-
 ## ✅ Resumo Rápido
 
 | Serviço | Tecnologia | Porta Host |
