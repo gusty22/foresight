@@ -1,6 +1,6 @@
 # Foresight - Business Intelligence & Gestão Comercial 🚀
 
-**Subdomínio pretendido para deploy:** `foresight.adsimepac.com.br`
+**Estado do projeto:** implementação em desenvolvimento. O endereço de deploy anteriormente mencionado era apenas uma intenção, não uma demonstração pública verificada.
 
 O **Foresight** é uma plataforma inovadora de gestão comercial e financeira projetada para micro e pequenas empresas, com um diferencial de módulo nativo para **Gestão de Sociedade e Investimentos (Equity)**.
 
@@ -102,16 +102,13 @@ Caso deseje rodar a API via IDE (ex.: IntelliJ IDEA) para desenvolvimento, o Spr
 
 O banco de dados é populado automaticamente ao subir os contêineres, graças às migrations do Flyway (arquivos `.sql` localizados em `src/main/resources/db/migration`) e as classes de Seeder da API.
 
-### Credenciais de Administrador
+### Acesso e segurança na execução local
 
-Utilize as seguintes credenciais padrão para acessar a aplicação:
+A API possui provisionamento de administrador na classe `AdminSeederConfig`. O código atual define valores padrão de desenvolvimento quando não são fornecidas as propriedades `app.security.superadmin.email` e `app.security.superadmin.password`.
 
-| Campo | Valor |
-| --- | --- |
-| **E-mail/Login** | `projeto@foresight.com` |
-| **Senha** | `admin123` |
+**Importante:** defina credenciais próprias e fortes antes de executar em um ambiente exposto. Nunca utilize credenciais de desenvolvimento em produção. O banco PostgreSQL do `docker-compose.yml` também utiliza usuário e senha de exemplo e expõe a porta 5432; adapte essas configurações para um ambiente seguro.
 
-> **Nota:** Caso as migrations não insiram os dados mockados no ambiente de teste, basta cadastrar uma conta nova na própria tela de login e acessar o sistema limpo.
+A aplicação possui código de autenticação e autorização, mas este README não substitui uma auditoria de segurança. Não há validação de implantação pública ou de todos os fluxos neste documento.
 
 ---
 
@@ -130,3 +127,10 @@ Utilize as seguintes credenciais padrão para acessar a aplicação:
 docker compose up -d --build
 
 ```
+
+
+## Observações de implementação
+
+A árvore do repositório contém módulos de clientes, produtos, investimentos, vendas, autenticação, auditoria e componentes de backoffice. Trata-se de evidência de código e estrutura, **não de uma certificação de que todos os fluxos estejam completos ou testados**.
+
+Frontend e backend também estão organizados em diretórios separados dentro deste repositório. Existe ainda um [repositório independente de frontend](https://github.com/gusty22/foresight-web); não presuma que as duas versões estejam sincronizadas sem comparar o código.
